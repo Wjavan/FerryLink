@@ -88,7 +88,7 @@
     // id 是分派键，改名会断执行器，别动
     //   http   HTTP 直链       直链下载
     //   idm    本地 HTTP API   IDM 内置接口 1001
-    //   transcode 转码        备用视频链路，画质/体积可能与原片不同
+    //   transcode 转码        备用视频链路，直链不可用或过慢时可选
     //   rpc    JSON-RPC        aria2/Motrix 的 6800 端口
     //   curl   cURL            命令行
     //   aria2c Aria2c          命令行
@@ -119,7 +119,7 @@
     ];
     const PROTO_TITLES = {
         http:   '浏览器直接请求直链下载',
-        transcode: '备用视频链路；画质与体积可能与原片不同',
+        transcode: '备用视频链路；直链不可用或过慢时可选',
         idm:    '通过 IDM 本地 HTTP 接口（127.0.0.1:1001）推送任务，需 IDM 已启动且浏览器扩展已注册 client',
         rpc:    '通过 Aria2/Motrix 的 JSON-RPC 接口（HTTP 6800 端口）推送任务，需已开启 RPC',
         curl:   '生成 curl 命令行，适合 Linux/macOS 终端',
