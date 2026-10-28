@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              FerryLink
 // @namespace         https://github.com/Wjavan/FerryLink
-// @version           1.5.0
+// @version           1.5.1
 // @author            Wjavan
 // @description       支持百度/阿里/天翼/迅雷/夸克/移动六大网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/NDM/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
 // @copyright         2026, Wjavan (https://github.com/Wjavan)
@@ -252,7 +252,7 @@
         },
         migrate() {
             const MARK = 'ferrylink_migrated_version';
-            const VERSION = '1.5.0';
+            const VERSION = '1.5.1';
             try {
                 if (GM_getValue(MARK, '') === VERSION) return;
                 ['shareToken', 'share_token', 'ferrylink_last_downloader', 'ferrylink_last_protocol'].forEach((k) => {
@@ -311,6 +311,65 @@
             return /^((127|10)\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3})$/.test(host)
                 || /^172\.(1[6-9]|2[0-9]|3[01])\.\d{1,3}\.\d{1,3}$/.test(host)
                 || /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(host);
+        },
+        // ── 默认下载器：记住一组选择，打开面板直接可用 ──────────────────
+        defaultSelection() {
+            const s = base._siteKey();
+            const dl = base.getValue(`setting_default_downloader_${s}`) || '';
+            const proto = base.getValue(`setting_default_protocol_${s}`) || '';
+            if (!dl || !PROTOCOLS[dl]) return null;
+            if (!PROTOCOLS[dl].some(p => p.id === proto)) return null;
+            return { downloader: dl, protocol: proto };
+        },
+        setDefaultSelection(dl, proto) {
+            const s = base._siteKey();
+            base.setValue(`setting_default_downloader_${s}`, dl || '');
+            base.setValue(`setting_default_protocol_${s}`, proto || '');
+        },
+        clearDefaultSelection() {
+            const s = base._siteKey();
+            base.deleteValue(`setting_default_downloader_${s}`);
+            base.deleteValue(`setting_default_protocol_${s}`);
+        },
+        // 默认值按网盘分开存，迅雷的多链/转码才不会把别的站顶掉
+        _siteKey() {
+            const a = base._activeAdapter || {};
+            return a.site || 'default';
+        },
+        _defaultNames() {
+            const d = base.defaultSelection();
+            if (!d) return '';
+            const dl = DOWNLOADERS.find(x => x.id === d.downloader);
+            const p = (PROTOCOLS[d.downloader] || []).find(x => x.id === d.protocol);
+            return (dl ? dl.name : d.downloader) + ' · ' + (p ? p.name : d.protocol);
+        },
+        // 星标只做记号，含义靠文字，图标不抢对比度
+        _defaultBtnHtml() {
+            const d = base.defaultSelection();
+            const same = !!d && downloadState.downloader === d.downloader && downloadState.protocol === d.protocol;
+            const star = '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M6 1.5l1.4 2.8 3.1.45-2.25 2.2.53 3.1L6 8.6 3.22 10.05l.53-3.1L1.5 4.75l3.1-.45z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+            if (!same) {
+                return `<button type="button" id="pl-dl-default-btn" class="pl-dl-default-btn listener-dl-set-default" title="记住当前的下载器与协议，下次打开面板自动选中">${star}<span>设为默认</span></button>`;
+            }
+            const starOn = star.replace('fill="none"', 'fill="currentColor"');
+            const cross = '<svg class="pl-dl-default-x" viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M2.8 2.8l6.4 6.4M9.2 2.8L2.8 9.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+            return `<button type="button" id="pl-dl-default-btn" class="pl-dl-default-btn is-set listener-dl-set-default" title="当前默认下载方式，点此取消">${starOn}<span class="pl-dl-default-tag">默认</span><span class="pl-dl-default-name">${base.esc(base._defaultNames())}</span>${cross}</button>`;
+        },
+        // 按当前选择改称呼，只有等于默认才给 ✕
+        _syncDefaultBtn() {
+            const $b = $('#pl-dl-default-btn');
+            if (!$b.length) return;
+            const html = base._defaultBtnHtml();
+            if ($b[0].outerHTML !== html) $b.replaceWith(html);
+        },
+        _applyDefaultSelection() {
+            const d = base.defaultSelection();
+            if (!d || downloadState.downloader) return false;   // 同页面内已选过就沿用
+            const protos = PROTOCOLS[d.downloader] || [];
+            const pick = protos.find(p => p.id === d.protocol && base._protoUsable(p))
+                || protos.find(p => base._protoUsable(p));
+            downloadState.downloader = d.downloader;
+            downloadState.protocol = pick ? pick.id : '';
         },
         _rpcConfig() {
             const rpc = {
@@ -907,6 +966,7 @@
                 $(e.currentTarget).addClass('active');
                 base._updateMainButton();
                 base._paintLinkCells();
+                base._syncDefaultBtn();
             });
             doc.on('click', '.listener-dl-execute', async () => {
                 if (!downloadState.downloader || !downloadState.protocol) return;
@@ -934,6 +994,23 @@
                 base.setClipboard(links.join('\n'));
                 $btn.text('复制完成：成功 ' + links.length + '，失败 0');
                 setTimeout(() => $btn.text(old), 1500);
+            });
+            doc.on('click', '.listener-dl-set-default', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const cur = base.defaultSelection();
+                const same = cur && cur.downloader === downloadState.downloader && cur.protocol === downloadState.protocol;
+                if (same) {
+                    base.clearDefaultSelection();
+                    base.panelNotice('已取消默认下载方式', 'info');
+                } else if (downloadState.downloader && downloadState.protocol) {
+                    base.setDefaultSelection(downloadState.downloader, downloadState.protocol);
+                    base.panelNotice('已设为默认：' + base._defaultNames(), 'success');
+                } else {
+                    base.panelNotice('请先选择下载器和协议，再设为默认', 'info');
+                    return;
+                }
+                $('#pl-dl-default-btn').replaceWith(base._defaultBtnHtml());
             });
             doc.on('click', '.listener-open-setting', (e) => {
                 e.preventDefault();
@@ -1001,6 +1078,7 @@
         renderDownloadPanel(files, adapter) {
             base.panelFiles = files;
             base._activeAdapter = adapter;
+            base._applyDefaultSelection(); // 先套默认，再画 chips
 
             const fileRows = files.map((f, i) => {
                 const gray = f.isFolder || !f.dlink || !/^https?:\/\//.test(f.dlink);
@@ -1032,7 +1110,7 @@
                 <div class="pl-dl-warning-bar" id="pl-dl-rpc-warning">尚未配置 Aria2 / Motrix 的 RPC 参数，请先完成配置</div>
                 ${emptyHtml}
                 <div class="pl-dl-section">
-                    <div class="pl-dl-section-label">选择下载器</div>
+                    <div class="pl-dl-section-label">选择下载器 ${base._defaultBtnHtml()}</div>
                     <div class="pl-dl-chips">${dlChips}</div>
                 </div>
                 <div class="pl-dl-section">
@@ -1105,10 +1183,15 @@
         _hasMediaLink() {
             return (base.panelFiles || []).some(f => f.mediaLink);
         },
-        _protoChip(p) {
+        // 站点受限的协议只这一处判据，chip 与默认值共用
+        _protoUsable(p) {
             const isXunlei = /xunlei\.com/.test(String(location && location.host || ''));
-            if (p.id === 'seg' && !isXunlei) return '';
-            if (p.id === 'transcode' && (!isXunlei || !base._hasMediaLink())) return '';
+            if (p.id === 'seg' && !isXunlei) return false;
+            if (p.id === 'transcode' && (!isXunlei || !base._hasMediaLink())) return false;
+            return true;
+        },
+        _protoChip(p) {
+            if (!base._protoUsable(p)) return '';
             const active = downloadState.protocol === p.id ? ' active' : '';
             return `<div class="pl-dl-chip${active}" data-type="protocol" data-id="${p.id}" title="${base.esc(PROTO_TITLES[p.id] || '')}">${p.name}</div>`;
         },
@@ -1141,6 +1224,7 @@
             $('#pl-dl-protocol-label').text(base._protocolLabelText());
             $c.html(base._protocolChipsHtml());
             base._paintLinkCells();
+            base._syncDefaultBtn();
         },
         async executeAction(files, adapter) {
             if (!downloadState.downloader || !downloadState.protocol) return;
@@ -1685,6 +1769,14 @@
             body.fl-dark ::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,.3); }
             .pl-dl-chip { background: #2a2b2c; border-color: #3f4041; color: #c9cacc; }
             .pl-dl-chip.active { background: ${color}; border-color: ${color}; color: #fff; }
+            .pl-dl-default-btn { background: #2a2b2c; border-color: #3f4041; color: #c9cacc; }
+            .pl-dl-default-btn:focus-visible { box-shadow: 0 0 0 2px #1d1e1f, 0 0 0 4px currentColor; }
+            .pl-dl-default-btn:hover { background: #343536; border-color: ${color}; color: ${color}; }
+            .pl-dl-default-btn.is-set { background: #1b2c35; border-color: #26617f; color: ${color}; }
+            .pl-dl-default-btn.is-set .pl-dl-default-tag, .pl-dl-default-btn.is-set .pl-dl-default-name { color: #d8d9da; }
+            .pl-dl-default-btn.is-set .pl-dl-default-x { color: #8b8e93; }
+            .pl-dl-default-btn.is-set:hover { background: #3f2226; border-color: #5a2f33; }
+            .pl-dl-default-btn.is-set:hover .pl-dl-default-tag, .pl-dl-default-btn.is-set:hover .pl-dl-default-name, .pl-dl-default-btn.is-set:hover .pl-dl-default-x { color: #e06c75; }
             .pl-dl-actions { border-top-color: #343536; }
             .pl-dl-btn-secondary { background: #2a2b2c; color: #c9cacc; border-color: #3f4041; }
             .pl-dl-btn-secondary:hover { background: #343536; }
@@ -1791,6 +1883,17 @@
             .pl-dl-gray .pl-dl-file-link { color: #cc3235; }
             .pl-dl-section { margin: 0 -10px; padding: 14px 10px; border-top: 1px solid #e6e8eb; }
             .pl-dl-section-label { font-size: 12px; color: #6b7078; margin-bottom: 8px; font-weight: 600; }
+            .pl-dl-default-btn { display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; height: 22px; padding: 0 9px; border: 1px solid #d4d8de; border-radius: 999px; background: #fff; color: #606266; font-size: 12px; font-weight: 400; line-height: 1; font-family: inherit; cursor: pointer; vertical-align: middle; transition: background-color 180ms, border-color 180ms, color 180ms; }
+            .pl-dl-default-btn svg { flex: 0 0 auto; }
+            .pl-dl-default-btn:hover { border-color: #b9dff2; background: #f4fbff; color: #0a7bb8; }
+            .pl-dl-default-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
+            .pl-dl-default-btn.is-set { border-color: #bfe9ff; background: #eef9ff; color: #0a7bb8; }
+            .pl-dl-default-btn.is-set .pl-dl-default-tag { color: #303133; font-weight: 600; }
+            .pl-dl-default-btn.is-set .pl-dl-default-name { max-width: 168px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #303133; }
+            .pl-dl-default-btn.is-set .pl-dl-default-x { color: #8b8e93; }
+            .pl-dl-default-btn.is-set:hover { border-color: #f2b7b9; background: #fef0f0; color: #cc3235; }
+            .pl-dl-default-btn.is-set:hover .pl-dl-default-tag, .pl-dl-default-btn.is-set:hover .pl-dl-default-name { color: #cc3235; }
+            .pl-dl-default-btn.is-set:hover .pl-dl-default-x { color: #cc3235; }
             #pl-dl-protocol-chips { row-gap: 4px; }
             .pl-dl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
             .pl-dl-chip { display: inline-flex; align-items: center; padding: 8px 18px; border-radius: 999px; font-size: 13px; border: 1px solid #d4d8de; background: #fafbfc; color: #606266; cursor: pointer; transition: background-color 180ms, border-color 180ms, color 180ms; white-space: nowrap; }
@@ -1909,6 +2012,7 @@
 
     // L1 适配层：六个网盘适配器，禁止互相引用
     let baidu = {
+        site: 'baidu',
         _linkCache: [],   // dlink 内存缓存 [{ id: fs_id, expires, data }]，会话级、不落 GM 存储
         _getFidArray() {
             let fidlist = [];
@@ -2288,6 +2392,7 @@
         }
     };
     let ali = {
+        site: 'ali',
         convertLinkToAria(link, filename, ua) {
                     filename = base.fixFilename(filename);
                     // 阿里 CDN 没浏览器 UA 就 403，命令也得带头
@@ -2516,6 +2621,7 @@
         }
     };
     let tianyi = {
+        site: 'tianyi',
         convertLinkToAria(link, filename, ua) {
             filename = base.fixFilename(filename);
             return encodeURIComponent(`aria2c "${link}" --out "${filename}" -x 16 -s 16 -k 1M`);
@@ -2697,6 +2803,7 @@
         }
     };
     let xunlei = {
+        site: 'xunlei',
         _homeSelectors: [
             '.FileMenu__container--yB0l1',
             '.FileMenu__menus--HFKwO',
@@ -3033,6 +3140,7 @@
         }
     };
     let quark = {
+        site: 'quark',
         convertLinkToAria(link, filename, ua) {
             filename = base.fixFilename(filename);
             return encodeURIComponent(`aria2c "${link}" --out "${filename}" --header "User-Agent: ${panInfo.ua}" --header "Cookie: ${String(document.cookie).replace(/[\\"`$]/g, '')}"`);
@@ -3224,6 +3332,7 @@
         }
     };
     let yidong = {
+        site: 'yidong',
         convertLinkToAria(link, filename, ua) {
             filename = base.fixFilename(filename);
             return encodeURIComponent(`aria2c "${link}" --out "${filename}" -x 16 -s 16 -k 1M`);
