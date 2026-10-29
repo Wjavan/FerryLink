@@ -4,7 +4,7 @@
 
 <h1 align="center">FerryLink</h1>
 
-<p align="center"><b>免费开源 · 六大网盘 · 多种热门下载器 · 多种下载协议</b></p>
+<p align="center"><b>免费开源 · 多网盘支持 · 多种热门下载器 · 多种下载协议</b></p>
 
 <p align="center">
    <a href="https://greasyfork.org/zh-CN/scripts/595544"><img alt="GreasyFork 安装量" src="https://img.shields.io/greasyfork/dt/595544?label=GreasyFork%20%E5%AE%89%E8%A3%85%E9%87%8F&style=flat&labelColor=black&color=670000&logo=greasyfork&logoColor=white"></a>
@@ -35,7 +35,7 @@
 
 | 特性 | 说明 |
 |------|------|
-| 🎯 **六大网盘支持** | 百度网盘、阿里云盘、天翼云盘、迅雷云盘、夸克网盘、中国移动云盘 |
+| 🎯 **多网盘支持** | 百度网盘、阿里云盘、天翼云盘、迅雷云盘、夸克网盘、中国移动云盘、城通网盘 |
 | 🧩 **统一下载面板** | 先选下载器、再选协议，任意组合；文件再多也不会把弹窗挤爆 |
 | ⚡ **推送型协议** | IDM 本地 HTTP API、Aria2 / Motrix JSON-RPC、BitComet 远程下载 |
 | 🔗 **多链下载** | 开 4 路并发分段取回再合并，单连接被限速时能叠加带宽 |
