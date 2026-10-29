@@ -3,7 +3,7 @@
 // @namespace         https://github.com/Wjavan/FerryLink
 // @version           1.5.1
 // @author            Wjavan
-// @description       支持百度/阿里/天翼/迅雷/夸克/移动六大网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/NDM/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
+// @description       支持百度/阿里/天翼/迅雷/夸克/移动/城通网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/NDM/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
 // @copyright         2026, Wjavan (https://github.com/Wjavan)
 // @license           GPL-3.0
 // @homepage          https://github.com/Wjavan/FerryLink
@@ -23,6 +23,11 @@
 // @match             *://pan.quark.cn/*
 // @match             *://yun.139.com/*
 // @match             *://caiyun.139.com/*
+// @match             *://*.ctfile.com/*
+// @match             *://*.ctfile.net/*
+// @match             *://*.ctfile.cn/*
+// @match             *://*.545c.com/*
+// @noframes
 // @run-at            document-start
 // @require           https://registry.npmmirror.com/jquery/3.7.0/files/dist/jquery.min.js
 // @require           https://registry.npmmirror.com/sweetalert2/10.16.6/files/dist/sweetalert2.all.min.js
@@ -39,6 +44,9 @@
 // @connect           quark.cn
 // @connect           yun.139.com
 // @connect           caiyun.139.com
+// @connect           ctfile.com
+// @connect           tv002.com
+// @connect           ctcontents.com
 // @connect           localhost
 // @connect           127.0.0.1
 // @connect           *
@@ -66,6 +74,39 @@
             style: 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#cc3235;color:#fff;padding:8px 12px;font:13px/1.5 sans-serif;text-align:center'
         }));
         return;
+    }
+    // 列表参数只有页面知道，记下它发的那条请求
+    const driveHdrs = {};          // 城通给的下载地址常配一组头，按 URL 存
+    const BTN_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.2m0 0L5.2 6.9M8 9.7l2.8-2.8M3.2 12.8h9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const ROW_BUTTON = '<div class="ctfile-button ctfile-button-peer pl-button" title="下载助手">' + BTN_ICON + '下载助手</div>';
+    const clampGap = (v) => Math.max(-40, Math.min(40, Math.round(v)));
+    const driveTrace = { url: '', body: '' };
+    if (/drive\.ctfile\.com/.test(location.host)) {
+        const pageWin = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+        try {
+            const of = pageWin.fetch;
+            pageWin.fetch = function (u, o) {
+                try {
+                    const url = typeof u === 'string' ? u : ((u && u.url) || '');
+                    if (/\/v4\/file\/browse\/list/.test(url) && o && o.body) { driveTrace.url = url; driveTrace.body = String(o.body); }
+                } catch (e) { }
+                return of.apply(this, arguments);
+            };
+        } catch (e) { }
+        try {
+            const X = pageWin.XMLHttpRequest.prototype;
+            const ox = X.open, os = X.send;
+            X.open = function (m, u) {
+                this.__flUrl = u;
+                return ox.apply(this, arguments);
+            };
+            X.send = function (b) {
+                try {
+                    if (b && /\/v4\/file\/browse\/list/.test(String(this.__flUrl))) { driveTrace.url = this.__flUrl; driveTrace.body = String(b); }
+                } catch (e) { }
+                return os.apply(this, arguments);
+            };
+        } catch (e) { }
     }
     let pageNum = '', selectedFiles = [], panInfo = {}, color = '',
         doc = $(document), downloadProgress = {}, pendingRequests = {}, intervals = {};
@@ -126,7 +167,7 @@
         aria2c: '生成 aria2c 命令行，适合终端或脚本',
         bc:     '复制 bc:// 地址：粘贴到 BitComet「文件→打开 URL」或地址栏即可调起客户端下载；无需配置端口，需本机已安装 BitComet',
         'bc-rpc': '点击开始下载后先探测 BitComet 远程下载：可用则直接推送（无浏览器弹框）；不可用则自动改用 bc:// 调起本机 BitComet 客户端',
-        seg:    '开 4 路并发分段取回再合并存盘，单连接被限速时能叠加带宽；节点过慢会自动停手',
+        seg:    '多路并发分段取回再合并存盘，单连接被限速时能叠加带宽；节点过慢会自动停手',
     };
     const PROTO_ORDER = ['http', 'transcode', 'seg', 'idm', 'rpc', 'curl', 'aria2c', 'bc', 'bc-rpc'];
     const ALL_PROTOCOLS = PROTO_GROUPS.map(g => {
@@ -971,8 +1012,14 @@
             doc.on('click', '.listener-dl-execute', async () => {
                 if (!downloadState.downloader || !downloadState.protocol) return;
                 if (!base.panelFiles || !base.panelFiles.length) return;
-                const files = base.panelFiles.map((f, i) => ({ ...f, _idx: i }));
-                await base.executeAction(files, base._activeAdapter);
+                if (base._executing) return;   // 上一次还没跑完，重复点会把提示弹两遍
+                base._executing = true;
+                try {
+                    const files = base.panelFiles.map((f, i) => ({ ...f, _idx: i }));
+                    await base.executeAction(files, base._activeAdapter);
+                } finally {
+                    base._executing = false;
+                }
             });
             doc.on('click', '.listener-dl-copy-name', (e) => {
                 if (!base.panelFiles || !base.panelFiles.length) return;
@@ -1034,14 +1081,138 @@
             $div.append($iframe);
             $('body').append($div);
         },
-        iframeDownload(link) {
+        async iframeDownload(link) {
             if (!/^https?:\/\//i.test(link)) {
                 base.panelNotice('提示：下载链接无效！', 'error');
                 return false;
             }
+            // 城通直链带 inline，浏览器会拿去播放
+            if (/ctfile\.|545c\.com/.test(location.host)) {
+                let name = '';
+                try { name = decodeURIComponent((link.match(/[?&]fname=([^&]*)/) || [])[1] || ''); } catch (e) { }
+                name = base.fixFilename(name).slice(0, 120) || 'download';
+                let why = '';
+                try { return await this._swDownload(link, name); }
+                catch (e) { why = (e && e.message) || '中转不可用'; }
+                let r = await this._opfsDownload(link, name);
+                if (r && r.ok) return r;
+                // 两条路都不通就让浏览器打开
+                GM_openInTab(link, { active: false, insert: true, setParent: true });
+                base.panelNotice('脚本取不回这条直链（' + why + '），已在新标签打开', 'info', 9000);
+                return { ok: true };
+            }
             this.createDownloadIframe();
             $('#downloadIframe').attr('src', link);
             return true;
+        },
+        // 借城通 SW 中转：它给响应加 attachment 头
+        async _swDownload(url, filename) {
+            let bridge = document.createElement('iframe');
+            bridge.hidden = true;
+            bridge.src = new URL('/download/bridge.html', location.href).href;
+            let ch = new MessageChannel();
+            let dropBridge = () => { try { bridge.remove(); } catch (e) { } };
+            let streamUrl = await new Promise((resolve, reject) => {
+                let timer = setTimeout(() => reject(new Error('存储通道没起来')), 15000);
+                ch.port1.onmessage = (e) => {
+                    let d = e.data;
+                    if (d && d.url) {
+                        clearTimeout(timer);
+                        let u;
+                        try { u = new URL(String(d.url), location.href); } catch (err) { return reject(err); }
+                        if (u.origin !== location.origin) return reject(new Error('存储来源不对'));
+                        resolve(u.href);
+                    } else if (d && d.error) {
+                        clearTimeout(timer); reject(new Error(String(d.error)));
+                    } else if (d === 'ack' && ch._ack) {
+                        ch._ack(); ch._ack = null;
+                    }
+                };
+                bridge.onload = () => bridge.contentWindow.postMessage(
+                    { type: 'ctfile-download', fileName: filename, size: 0 }, location.origin, [ch.port2]
+                );
+                document.body.appendChild(bridge);
+            }).catch((e) => { dropBridge(); throw e; });
+
+            // 先取一次，跨域和 4xx 在这里暴露
+            let resp;
+            try {
+                resp = await fetch(url);   // 签名在 URL 里，不用带 cookie
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            } catch (e) {
+                try { ch.port1.postMessage('abort'); } catch (err) { }
+                dropBridge();
+                throw e;
+            }
+            // worker 的 pull 只在有消费者时触发
+            let sink = document.createElement('iframe');
+            sink.hidden = true; sink.src = streamUrl;
+            document.body.appendChild(sink);
+            // 通道建好就交付，喂数据在后台跑
+            this._feedSw(resp, ch, bridge, sink);
+            return { ok: true };
+        },
+        async _feedSw(resp, ch, bridge, sink) {
+            try {
+                let reader = resp.body.getReader(), gated = true;
+                for (;;) {
+                    let chunk = await reader.read();
+                    if (chunk.done) break;
+                    ch.port1.postMessage({ chunk: chunk.value });
+                    if (!gated) continue;
+                    // 不回话就放弃门控，避免整条链卡住
+                    let got = await Promise.race([
+                        new Promise((r) => { ch._ack = () => r(true); }),
+                        new Promise((r) => setTimeout(() => r(false), 3000)),
+                    ]);
+                    ch._ack = null;
+                    gated = got;
+                }
+                ch.port1.postMessage('end');
+            } catch (e) {
+                try { ch.port1.postMessage('abort'); } catch (err) { }
+                try { base.panelNotice('取回中断：' + ((e && e.message) || e), 'error', 9000); } catch (err) { }
+            } finally {
+                // sink 是浏览器取数的入口，删了会掐断下载
+                setTimeout(() => { try { bridge.remove(); } catch (e) { } }, 60000);
+            }
+        },
+        async _opfsDownload(url, filename) {
+            let st = (typeof navigator !== 'undefined' && navigator.storage) || null;
+            if (!st || typeof st.getDirectory !== 'function') {
+                return { ok: false, why: '浏览器不支持临时存储，改用 IDM 或复制链接' };
+            }
+            let root, tmpName = 'fl-' + Date.now() + '.tmp', fh;
+            try {
+                root = await st.getDirectory();
+                fh = await root.getFileHandle(tmpName, { create: true });
+            } catch (e) {
+                return { ok: false, why: '临时存储不可用：' + ((e && e.message) || e) };
+            }
+            try {
+                let resp = await fetch(url);   // 签名在 URL 里，不用带 cookie
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                let w = await fh.createWritable();
+                let reader = resp.body.getReader();
+                for (;;) {
+                    let chunk = await reader.read();
+                    if (chunk.done) break;
+                    await w.write(chunk.value);
+                }
+                await w.close();
+                let file = await fh.getFile();
+                let a = document.createElement('a');
+                let objUrl = URL.createObjectURL(file);
+                a.href = objUrl; a.download = filename;
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+                return { ok: true };
+            } catch (e) {
+                return { ok: false, why: (e && e.message) || '取回失败' };
+            } finally {
+                // blob URL 还指着这个文件，等浏览器读完再删，大文件要几分钟
+                setTimeout(() => { try { root.removeEntry(tmpName).catch(() => { }); } catch (e) { } }, 1800000);
+            }
         },
         // 百度 >50MB 直链绑 UA，浏览器导航 403，得由脚本带认证头取回
         _streamDownload(f, onProgress) {
@@ -1075,6 +1246,16 @@
             });
         },
 
+        // 这个容器在 loading 态是隐藏的，得先打开
+        tipLoading(text) {
+            let el = document.querySelector('.swal2-popup.swal2-loading .swal2-html-container');
+            if (!el) return;
+            if (!el.dataset.flTip) {
+                el.style.cssText += ';display:block !important;margin:14px 0 0;font-size:13px;color:#606266;text-align:center';
+                el.dataset.flTip = '1';
+            }
+            el.textContent = text;
+        },
         renderDownloadPanel(files, adapter) {
             base.panelFiles = files;
             base._activeAdapter = adapter;
@@ -1295,8 +1476,9 @@
                         base.panelNotice('已下载 ' + f.filename + '（' + base.sizeFormat(f.rawSize || 0) + '）', 'success', 5000);
                     } else { fail++; $st.html(MARK_NO); base.panelNotice('多链下载失败：' + r.why, 'error'); }
                 } else {
-                    const r = base.iframeDownload(f.dlink);
-                    if (r) { ok++; $st.html(MARK_OK); } else { fail++; $st.html(MARK_NO); }
+                    const r = await base.iframeDownload(f.dlink);
+                    if (r === true || (r && r.ok)) { ok++; $st.html(MARK_OK); }
+                    else { fail++; $st.html(MARK_NO); if (r && r.why) base.panelNotice('下载失败：' + r.why, 'error', 9000); }
                 }
                 if (i < files.length - 1) await base.sleep(800);
             }
@@ -1315,7 +1497,7 @@
             return {
                 paint: (pct, loaded) => {
                     const now = Date.now();
-                    // 500ms 一帧界面不闪；速度按 1 秒增量算，窗口太短数字跟着抖
+                    // 500ms 一帧不闪；速度按 1 秒增量算
                     if (pct !== 0 && pct !== 100 && now - lastPaint < 500) return;
                     lastPaint = now;
                     if (typeof loaded === 'number' && loaded > 0) {
@@ -1338,7 +1520,7 @@
                 done: () => $bar.removeAttr('style').text(linkText),
             };
         },
-        // 只在迅雷上开：其他网盘的 CDN 能不能并发尚未确认
+        // 只有迅雷能叠加：城通单连接已满速，多路实测无提升
         _useSegDownload(f) {
             return /xunlei\.com/.test(location.host) && !!f.dlink;
         },
@@ -1455,7 +1637,6 @@
                 $btn.text('正在推送 ' + files.length + ' 个任务至 IDM…').prop('disabled', true);
                 let ok = 0, fail = 0;
                 for (let f of files) {
-                    let h = {};
                     const r = await base.sendLinkToIDM(f.dlink, f.filename, f.rawSize || 0, base._cdnHeaders(f.dlink));
                     if (r === 'success') { ok++; $('.pl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_OK); }
                     else { fail++; $('.pl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_NO); }
@@ -1596,6 +1777,7 @@
                 },
                 _cdnHeaders(link) {
                     const h = {};
+                    if (driveHdrs[link]) Object.assign(h, driveHdrs[link]);
                     if (/d\.pcs\.baidu\.com/.test(link)) h['User-Agent'] = 'pan.baidu.com';
                     if (/xunlei\.com/.test(link)) {
                         const xc = xunlei && xunlei._getAuthCookie ? xunlei._getAuthCookie() : '';
@@ -1717,20 +1899,37 @@
             if (watched[element]) return;
             watched[element] = true;
             const checkInterval = 500, warnAfter = 15000;
-            let everFound = false, warned = false;
+            let warned = false;
             const startAt = Date.now();
             function checkElement() {
-                setTimeout(checkElement, checkInterval);
                 if (document.querySelector(element)) {
-                    everFound = true;
-                    callback();
+                    let ok = true;
+                    try { callback(); } catch (e) {
+                        ok = false;   // 回调抛错说明没挂上，下一轮再试
+                        console.warn('[FerryLink] 挂载回调出错，稍后重试：', e && e.message);
+                    }
+                    if (ok) return;   // 挂上了就收工
                 }
-                if (!everFound && !warned && !document.querySelector('.pl-button') && Date.now() - startAt > warnAfter) {
+                setTimeout(checkElement, checkInterval);
+                if (!warned && !document.querySelector('.pl-button') && Date.now() - startAt > warnAfter) {
                     warned = true;
                     console.warn('[FerryLink] 挂载点未出现：' + element + '（15 秒内一直没找到，页面结构可能已改）');
                 }
             }
             checkElement();
+        },
+        // 挂载点会被框架重画，盯 DOM 变化比轮询省
+        watchDom(callback) {
+            if (typeof MutationObserver !== 'function' || !document.body) return;
+            let last = 0;
+            new MutationObserver(() => {
+                if ($('.pl-button').length) return;
+                let now = Date.now();
+                if (now - last < 50) return;   // 连试失败时节流，别把主线程拖住
+                last = now;
+                // 等框架这一轮画完再插，晚一帧总好过被覆盖后闪一下
+                requestAnimationFrame(() => { if (!$('.pl-button').length) callback(); });
+            }).observe(document.body, { childList: true, subtree: true });
         },
         addPanLinkerStyle() {
             color = base.getValue('setting_theme_color');
@@ -1803,7 +2002,7 @@
             ::-webkit-scrollbar-thumb:hover { background-color: rgba(85,85,85,.75) }
             /* 面板外的弹窗用 16px 基准，面板本体 12px */
             .swal2-popup { font-size: 16px !important; }
-            .pl-popup { font-size: 12px !important; border-radius: 6px !important; box-shadow: 0 1px 2px rgb(28 28 32 / 4%), 0 6px 16px rgb(28 28 32 / 8%) !important; }
+            .pl-popup { font-size: 12.5px !important; border-radius: 6px !important; box-shadow: 0 1px 2px rgb(28 28 32 / 4%), 0 6px 16px rgb(28 28 32 / 8%) !important; }
             .pl-popup a { color: ${color} !important; }
             .tag-danger { color: #cc3235; margin: 0 5px; }
             .ali-button { display: inline-flex; align-items: center; justify-content: center; border: 0 solid transparent; border-radius: 5px; white-space: nowrap; flex-shrink: 0; font-size: 14px; line-height: 1.5; outline: 0; touch-action: manipulation; transition: background .3s ease; color: #fff; background: #637dff; margin-left: 20px; padding: 0 12px; position: relative; cursor: pointer; height: 32px; min-height: 32px; }
@@ -1821,6 +2020,19 @@
             .quark-button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #ddd; border-radius: 8px; white-space: nowrap; flex-shrink: 0; font-size: 14px; line-height: 1.5; outline: 0; color: #333; background: #fff; margin-right: 10px; padding: 0 14px; position: relative; cursor: pointer; height: 36px; min-height: 32px; transition: background .3s ease; }
             .quark-button:hover { background: #f6f6f6; }
             .quark-button:focus-visible { outline: 2px solid #3f85ff; outline-offset: 2px; }
+            .ctfile-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; margin: 6px; height: 48px; padding: 0 24px; border: 1px solid #1677ff; border-radius: 8px; background: #1677ff; color: #fff; font-family: inherit; font-size: 16px; font-weight: 700; line-height: 1; white-space: nowrap; flex-shrink: 0; cursor: pointer; transition: background-color .15s, border-color .15s, box-shadow .15s; }
+            .ctfile-button:hover { background: #0958d9; border-color: #0958d9; }
+            .ctfile-button:active { background: #003eb3; border-color: #003eb3; }
+            .ctfile-button:focus-visible { outline: 2px solid #0958d9; outline-offset: 2px; }
+            .ctfile-button svg { width: 16px; height: 16px; flex-shrink: 0; }
+            .ctfile-button-sm { height: 30px; padding: 0 14px; gap: 6px; font-size: 14px; font-weight: 600; }
+            .ctfile-button-sm svg { width: 14px; height: 14px; }
+            /* 跟「上传/上传文件夹」同款：色值、高度、圆角挂载时从旁边按钮读回来（--fl-*） */
+            .ctfile-button-peer { margin: 0; height: var(--fl-h, 32px); padding: 0 14px; gap: 6px; border: 1px solid var(--fl-bd, #1677ff); border-radius: var(--fl-r, 8px); background: var(--fl-bg, #1677ff); color: var(--fl-fg, #fff); font-size: var(--fl-fs, 14px); font-weight: var(--fl-fw, 600); }
+            .ctfile-button-peer:hover { box-shadow: inset 0 0 0 999px rgba(255, 255, 255, .14); }
+            .ctfile-button-peer:active { box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .12); }
+            .ctfile-button-peer:focus-visible { outline: 2px solid var(--fl-bd, #1677ff); outline-offset: 2px; }
+            .ctfile-button-peer svg { width: 14px; height: 14px; }
             .pointer { cursor: pointer; }
             /* 设置页：菜单式主设置页行样式 */
             .pl-setting-list { text-align: left; }
@@ -1858,22 +2070,22 @@
             body.swal2-height-auto { height: inherit !important; }
                         .btn-operate .btn-main { display:flex; align-items:center; }
             /* ---- L3 UI 层：下载面板样式 pl-dl-* ---- */
-            .pl-dl-panel { width: 100%; font-size: 13px; }
-            .pl-dl-intro { font-size: 13px; color: #606266; line-height: 1.7; margin-bottom: 12px; }
+            .pl-dl-panel { width: 100%; font-size: 13.5px; }
+            .pl-dl-intro { font-size: 13.5px; color: #606266; line-height: 1.7; margin-bottom: 12px; }
             .pl-dl-intro a { color: ${color}; }
-            .pl-dl-help { font-size: 12px; color: #6b7078; margin-top: 10px; }
+            .pl-dl-help { font-size: 12.5px; color: #6b7078; margin-top: 10px; }
             /* 宿主页会重置裸链接的字号字体，让「帮助：」偏高，这里用 font: inherit 对齐 */
             .pl-dl-help a { color: ${color}; text-decoration: none; font: inherit; vertical-align: baseline; }
             .pl-dl-help a:hover { text-decoration: underline; }
             .pl-dl-btn:focus-visible, .pl-dl-chip:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
             .pl-dl-files { max-height: 320px; overflow-y: auto; margin: 0 -10px; padding: 0 10px; border-top: 1px solid #e6e8eb; border-bottom: 1px solid #e6e8eb; }
-            .pl-dl-file-count { font-size: 12px; color: #6b7078; margin-bottom: 6px; font-weight: 600; }
+            .pl-dl-file-count { font-size: 12.5px; color: #6b7078; margin-bottom: 6px; font-weight: 600; }
             /* 左右各外扩 10px 再由 padding 抵消，让 hover 底色与列表上下通栏边线同宽同齐 */
             .pl-dl-file-row { display: flex; align-items: center; gap: 10px; margin: 0 -10px; padding: 8px 20px; transition: background 180ms; }
             .pl-dl-file-row:hover { background: #f2f4f7; }
             .pl-dl-file-name { flex: 0 0 200px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 500; color: #111; }
-            .pl-dl-file-size { flex: 0 0 70px; font-size: 12px; color: #6b7078; text-align: right; }
-            .pl-dl-file-link { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #787774; }
+            .pl-dl-file-size { flex: 0 0 70px; font-size: 12.5px; color: #6b7078; text-align: right; }
+            .pl-dl-file-link { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; color: #787774; }
             .pl-dl-file-status { flex: 0 0 auto; font-size: 13px; min-width: 22px; text-align: center; }
             .pl-mark { font-size: 16px; font-weight: 700; line-height: 1; }
             .pl-mark.ok { color: #518c17; }
@@ -1882,7 +2094,7 @@
             .pl-dl-gray .pl-dl-file-name, .pl-dl-gray .pl-dl-file-size, .pl-dl-gray .pl-dl-file-status { opacity: 0.45; }
             .pl-dl-gray .pl-dl-file-link { color: #cc3235; }
             .pl-dl-section { margin: 0 -10px; padding: 14px 10px; border-top: 1px solid #e6e8eb; }
-            .pl-dl-section-label { font-size: 12px; color: #6b7078; margin-bottom: 8px; font-weight: 600; }
+            .pl-dl-section-label { font-size: 12.5px; color: #6b7078; margin-bottom: 8px; font-weight: 600; }
             .pl-dl-default-btn { display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; height: 22px; padding: 0 9px; border: 1px solid #d4d8de; border-radius: 999px; background: #fff; color: #606266; font-size: 12px; font-weight: 400; line-height: 1; font-family: inherit; cursor: pointer; vertical-align: middle; transition: background-color 180ms, border-color 180ms, color 180ms; }
             .pl-dl-default-btn svg { flex: 0 0 auto; }
             .pl-dl-default-btn:hover { border-color: #b9dff2; background: #f4fbff; color: #0a7bb8; }
@@ -1896,15 +2108,15 @@
             .pl-dl-default-btn.is-set:hover .pl-dl-default-x { color: #cc3235; }
             #pl-dl-protocol-chips { row-gap: 4px; }
             .pl-dl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-            .pl-dl-chip { display: inline-flex; align-items: center; padding: 8px 18px; border-radius: 999px; font-size: 13px; border: 1px solid #d4d8de; background: #fafbfc; color: #606266; cursor: pointer; transition: background-color 180ms, border-color 180ms, color 180ms; white-space: nowrap; }
+            .pl-dl-chip { display: inline-flex; align-items: center; padding: 8px 18px; border-radius: 999px; font-size: 13.5px; border: 1px solid #d4d8de; background: #fafbfc; color: #606266; cursor: pointer; transition: background-color 180ms, border-color 180ms, color 180ms; white-space: nowrap; }
             .pl-dl-chip:hover { border-color: ${color}; color: ${color}; }
             .pl-dl-chip.active { background: ${color}; border-color: ${color}; color: #fff; }
             .pl-dl-chip.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
             .pl-dl-proto-group { width: 100%; }
             .pl-dl-proto-group-label { font-size: 12px; color: #6b7078; margin: 4px 0; }
             .pl-dl-actions { display: flex; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid #e6e8eb; }
-            .pl-dl-btn { padding: 8px 22px; border-radius: 8px; font-size: 13px; border: 0; cursor: pointer; transition: background-color 180ms, border-color 180ms, color 180ms; white-space: nowrap; min-height: 38px; }
-            .pl-dl-btn-primary { background: ${color}; color: #fff; font-size: 14px; font-weight: 500; min-width: 150px; }
+            .pl-dl-btn { padding: 8px 22px; border-radius: 8px; font-size: 13.5px; border: 0; cursor: pointer; transition: background-color 180ms, border-color 180ms, color 180ms; white-space: nowrap; min-height: 38px; }
+            .pl-dl-btn-primary { background: ${color}; color: #fff; font-size: 14.5px; font-weight: 500; min-width: 150px; }
             .pl-dl-btn-primary:hover { opacity: 0.9; }
             .pl-dl-btn-primary:disabled { background: #f5f6f7; color: #c0c4cc; cursor: not-allowed; font-weight: 400; }
             .pl-dl-btn-secondary { background: #fff; color: #606266; border: 1px solid #d4d8de; }
@@ -1917,9 +2129,9 @@
             .pl-dl-toast span { word-break: break-all; }
             .pl-dl-toast-success { border-color: #67c23a; color: #2f7a17; }
             .pl-dl-toast-error { border-color: #f56c6c; color: #c03639; }
-            .pl-dl-empty { padding: 14px 28px; text-align: center; color: #6b7078; font-size: 14px; }
+            .pl-dl-empty { padding: 14px 28px; text-align: center; color: #6b7078; font-size: 14.5px; }
             .pl-dl-empty svg { display: block; margin: 0 auto 10px; color: #c3c8cf; }
-            .pl-dl-empty-title { font-size: 15px; }
+            .pl-dl-empty-title { font-size: 15.5px; }
             .pl-dl-retry { margin-top: 10px; padding: 8px 22px; min-height: 38px; border-radius: 8px; border: 1px solid ${color}; color: ${color}; background: #fff; cursor: pointer; font-size: 13px; }
             .pl-dl-retry:hover { background: ${color}11; }
             /* 弹窗入场：drop（平滑掉落） */
@@ -2010,7 +2222,7 @@
         },
     };
 
-    // L1 适配层：六个网盘适配器，禁止互相引用
+    // L1 适配层：各网盘适配器，禁止互相引用
     let baidu = {
         site: 'baidu',
         _linkCache: [],   // dlink 内存缓存 [{ id: fs_id, expires, data }]，会话级、不落 GM 存储
@@ -3582,6 +3794,516 @@
             base.registerMenuCommand();
         }
     };
+    let ctfile = {
+        site: 'ctfile',
+        convertLinkToAria(link, filename, ua) {
+            filename = base.fixFilename(filename);
+            return encodeURIComponent(`aria2c "${link}" --out "${filename}" -x 16 -s 16 -k 1M`);
+        },
+        convertLinkToBC(link, filename, ua) {
+            let bc = `AA/${encodeURIComponent(filename)}/?url=${encodeURIComponent(link)}ZZ`;
+            return encodeURIComponent(`bc://http/${base.e(bc)}`);
+        },
+        convertLinkToCurl(link, filename, ua) {
+            let terminal = base.getValue('setting_terminal_type');
+            filename = base.fixFilename(filename);
+            return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}"`);
+        },
+        addPageListener() {
+            doc.on('click', '.pl-button', async (e) => {
+                if ($(e.target).closest('.g-button-menu, .menu').length) return;
+                Swal.showLoading();
+                try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
+            });
+        },
+        addButton() {
+            if (!pageNum) return;
+            if (pageNum === 'drive') {
+                this._mountDriveBtn();          // 先进页面就挂一次，工具栏已就绪时不用等 DOM 变动
+                base.watchDom(() => {
+                    if ($('.pl-button').length) return;
+                    this._mountDriveBtn();
+                });
+                return;
+            }
+            let cls = pageNum === 'dir' ? 'ctfile-button ctfile-button-sm pl-button' : 'ctfile-button pl-button';
+            let $button = $(`<div class="${cls}" title="下载助手"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.2m0 0L5.2 6.9M8 9.7l2.8-2.8M3.2 12.8h9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>下载助手</div>`);
+            let mount = pageNum === 'dir' ? '.ct-bulk-bar .ct-actions' : '.ct-download-zone .ct-actions';
+            base.listenElement(mount, () => {
+                $('.pl-button').length === 0 && $(mount).prepend($button);
+            });
+        },
+        _uploadBtn() {
+            let $hit = $('button, a, [role="button"], [class*=btn]').filter(function () {
+                if (this.hidden || /none/i.test(String(this.style && this.style.display))) return false;
+                if ($(this).closest('[hidden], [aria-hidden="true"]').length) return false;
+                if ($(this).find('button, a, [role="button"]').length) return false;
+                return /^(上传|上传文件|Upload)$/i.test($(this).text().replace(/\s+/g, ''));
+            }).first();
+            return $hit.length ? $hit : null;
+        },
+        _mountDriveBtn() {
+            if ($('.pl-button').length) return true;    // 已经挂过，别重复插
+            let $up = this._uploadBtn();
+            if (!$up) return false;         // 工具栏还没渲染出来，等 DOM 变动再挂
+            let up = $up[0], cs = getComputedStyle(up);
+            let $btn = $(ROW_BUTTON).css({
+                '--fl-h': cs.height === 'auto' ? '' : cs.height,
+                '--fl-bg': cs.backgroundColor,
+                '--fl-fg': cs.color,
+                '--fl-bd': cs.borderTopColor,
+                '--fl-r': cs.borderTopLeftRadius || '8px',
+                '--fl-fs': cs.fontSize,
+                '--fl-fw': cs.fontWeight,
+            });
+            // 紧贴在一起的是连体组，插到组外
+            let sib = up.nextElementSibling;
+            let compact = !!sib && (sib.getBoundingClientRect().left - up.getBoundingClientRect().right) < 2;
+            let anchor = compact ? up.parentElement : up;
+            if (!anchor) return false;
+            // 往上找第一对有间隙的相邻控件
+            let target = 0, node = up;
+            for (let d = 0; d < 3 && node && !target; d++) {
+                node = node.parentElement;
+                if (!node) break;
+                let kids = [...node.children].filter(el => el.getBoundingClientRect().width > 0);
+                for (let i = 1; i < kids.length; i++) {
+                    let g = kids[i].getBoundingClientRect().left - kids[i - 1].getBoundingClientRect().right;
+                    if (g > 2 && g < 60) { target = Math.round(g); break; }
+                }
+            }
+            if (!target) target = 8;
+            // 组自带左边距，用负 margin 抵掉，不动城通元素
+            let ml = parseFloat(getComputedStyle(anchor).marginLeft) || 0;
+            $btn.css('margin-right', clampGap(target - ml) + 'px');
+            anchor.before($btn[0]);
+            // 字体和布局可能晚一步才定，多校几次，每次都往目标值上贴
+            let fix = () => {
+                if (!$btn[0].isConnected || !up.isConnected) return;
+                let cur = up.getBoundingClientRect().left - $btn[0].getBoundingClientRect().right;
+                if (Math.abs(target - cur) >= 0.5) {
+                    let mr = parseFloat(getComputedStyle($btn[0]).marginRight) || 0;
+                    $btn.css('margin-right', clampGap(mr + (target - cur)) + 'px');
+                    cur = up.getBoundingClientRect().left - $btn[0].getBoundingClientRect().right;
+                }
+            };
+            [0, 150, 400].forEach(t => {
+                if (!t && typeof requestAnimationFrame === 'function') requestAnimationFrame(fix);
+                else setTimeout(fix, t);
+            });
+            return true;
+        },
+        _watchHash() {
+            window.addEventListener('hashchange', () => {
+                if (pageNum !== 'drive') return;
+                if (this.detectPage() === 'drive') {
+                    if (!$('.ctfile-button.pl-button').length) this._mountDriveBtn();
+                    return;
+                }
+                $('.ctfile-button.pl-button').remove();
+            });
+        },
+        // 分享页 /f/<id> 与目录页 /d/<id>，提取码都在 ?p=
+        _shareRef() {
+            let m = /^\/(f|d)\/([^/?#]+)/.exec(location.pathname);
+            let pass = '';
+            try { pass = new URLSearchParams(location.search).get('p') || ''; } catch (e) { }
+            return { type: m ? m[1] : '', id: m ? m[2] : '', pass };
+        },
+        async getPCSLink() {
+            let ref = this._shareRef();
+            if (!ref.id) return this.detectPage() === 'drive' ? this._driveLink() : base.renderErrorPanel('仅支持文件分享页、目录页与个人网盘页', this);
+            return ref.type === 'd' ? this._dirLink(ref) : this._fileLink(ref);
+        },
+        // 扩展后台发的请求没有来源，得从页面上下文发
+        async _drivePost(path, body) {
+            let tk = '';
+            try { tk = sessionStorage.getItem('ctfile_basic_token') || ''; } catch (e) { }
+            if (!tk) throw new Error('读不到登录凭证，请刷新页面后重试');
+            let ext = /^https?:/i.test(path);
+            let url = ext ? String(path) : ('https://api.ctfile.com' + path);
+            if (ext && !/^https:\/\/(?:[\w-]+\.)*ctfile\.com(?=\/|$)/i.test(url)) throw new Error('拒绝向非城通地址发送凭证');
+            let headers = { 'content-type': 'application/json', 'authorization': 'Bearer ' + tk };
+            let pw = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : null;
+            if (pw && typeof pw.fetch === 'function') {
+                let r = await pw.fetch(url, { method: 'POST', headers: headers, body: JSON.stringify(body), credentials: 'include' });
+                let j = null;
+                try { j = await r.json(); } catch (e) { }
+                if (!j) throw new Error('HTTP ' + r.status);
+                if (r.status >= 400 && !j.code) j.code = r.status;
+                return j;
+            }
+            return base.post(url, body, headers);
+        },
+        // 先试 stream，拿不到再走授权链路
+        async _driveUrls(space, items) {
+            let ws = space.id || space.workspace_id || space.space_id;
+            let out = {};
+            for (let i = 0; i < items.length; i++) {
+                let it = items[i];
+                if (items.length > 1) base.tipLoading('正在获取下载链接 ' + (i + 1) + '/' + items.length + '…');
+                let fid = this._fid(it).replace(/^f/, '');
+                try {
+                    let r = await this._drivePost('/v4/file/browse/stream', { workspace_id: ws, file_id: fid });
+                    let f = (r && r.file) || (r && r.data && r.data.file) || {};
+                    let url = f.downurl || f.download_url || '';
+                    if (url && !this._deadLink(url)) {
+                        out[this._fid(it)] = url;
+                        if (f.headers) driveHdrs[url] = f.headers;
+                    }
+                } catch (e) {
+                    console.warn('[FerryLink] ctfile stream 失败：', fid, e && e.message);
+                }
+            }
+            if (Object.keys(out).length) return out;
+            let ids = items.map(it => this._fid(it)).join(',');
+            let auth = await this._drivePost('/v4/file/browse/create-download-auth', { workspace_id: ws, ids: ids });
+            let a = (auth && auth.data) || auth || {};
+            let sig = a.download_signature || '';
+            if (!sig) throw new Error('下载授权失败：' + String(JSON.stringify(auth)).slice(0, 120));
+            let list = await this._drivePost('/v4/file/browse/download-list', {
+                userid: a.userid, downuid: a.downuid, ids: a.ids || ids,
+                workspace_id: a.workspace_id || ws, expires_at: a.expires_at,
+                download_signature: sig, cursor: '', limit: 500
+            });
+            this._lastList = list;
+            let ld = (list && list.data) || list || {};
+            let rows = ld.results || ld.items || [];
+            for (let i = 0; i < rows.length; i++) {
+                let r = rows[i] || {};
+                if (rows.length > 1) base.tipLoading('正在换取下载地址 ' + (i + 1) + '/' + rows.length + '…');
+                let sign = r.download_sign || r.sign || '';
+                if (!sign) continue;
+                let u = await this._drivePost('/v4/file/browse/fetch-url-direct', { download_sign: sign, carrier: 0 });
+                let ud = (u && u.data) || u || {};
+                let url = ud.download_url || ud.downurl || '';
+                let key = String(r.fid || r.file_id || '');
+                if (url && !out[key] && !this._deadLink(url)) {
+                    out[key] = url;
+                    if (ud.headers) driveHdrs[url] = ud.headers;
+                }
+                this._lastFetch = u;
+            }
+            return out;
+        },
+        async _driveLink() {
+            let picked = this._driveCheckedNames();
+            if (!picked.length) return base.renderDownloadPanel([], this);   // 没勾选就给空面板，和其余六家一致
+            let spaces = await this._driveSpaces();
+            if (!spaces.length) return base.renderErrorPanel('读不到网盘空间，请刷新页面后重试', this);
+            let space = spaces[0], items = [];
+            this._lastFetch = this._lastList = null;
+            for (let i = 0; i < spaces.length && i < 3; i++) {
+                let got = [];
+                try {
+                    got = (await this._driveList(spaces[i])).filter(it => this._isDriveFile(it) && this._fid(it));
+                } catch (e) {
+                    console.warn('[FerryLink] ctfile 空间取列表失败：', spaces[i], e && e.message);
+                }
+                if (got.length) { space = spaces[i]; items = got; break; }
+            }
+            let hit = items.filter(it => {
+                let n = this._name(it);
+                return n && picked.some(t => t.indexOf(n) !== -1);
+            });
+            // 页面上勾了但名字对不上时保留整页，别让面板变空
+            if (hit.length) items = hit;
+            else console.warn('[FerryLink] ctfile 勾选没对上文件名：', picked.slice(0, 3), items.map(it => this._name(it)).slice(0, 3));
+            if (!items.length) return base.renderErrorPanel('当前目录没有可取的文件，请先进入子文件夹', this);
+            if (items.length >= 100) return base.renderErrorPanel('当前目录文件过多，请进入子文件夹后再试', this);
+            let ids = items.map(it => this._fid(it));
+            let byId = {}, dl = null;
+            try {
+                dl = await this._drivePost('/v4/file/browse/direct-link', {
+                    workspace_id: space.id || space.workspace_id || space.space_id, file_ids: ids.join(',')
+                });
+                let urls = (dl && dl.direct_urls) || (dl && dl.data && dl.data.direct_urls) || [];
+                urls.forEach(u => {
+                    byId[this._fid(u, true)] = u.url || '';
+                    if (u.headers) driveHdrs[u.url] = u.headers;
+                });
+            } catch (e) {
+                console.warn('[FerryLink] ctfile 直链接口失败，改走下载链路：', e && e.message);
+            }
+            // 无签名的 ctcontents 地址打不开，继续找别的路
+            let gotReal = Object.keys(byId).some(k => byId[k] && !this._deadLink(byId[k]));
+            if (!gotReal) {
+                let alt = {};
+                try { alt = await this._driveUrls(space, items); } catch (e) {
+                    console.warn('[FerryLink] ctfile 换链失败：', e && e.message);
+                }
+                Object.keys(alt).forEach(k => {
+                    if (!byId[k] || this._deadLink(byId[k])) byId[k] = alt[k];
+                });
+            }
+            let list = items.map(it => {
+                let fid = this._fid(it);
+                let link = byId[fid] || byId[fid.replace(/^f/, '')] || '';
+                return this._fileRow({ file_name: this._name(it), file_size: it.size || it.file_size || it.size_bytes }, link, it);
+            });
+            if (list.every(f => !f.dlink || this._deadLink(f.dlink))) {
+                let raw = String(JSON.stringify(this._lastFetch || this._lastList || dl || {})).slice(0, 200);
+                return base.renderErrorPanel('城通个人网盘取不到可用地址。接口原文：' + raw, this);
+            }
+            base.renderDownloadPanel(list, this);
+        },
+        // orderby 只认服务端枚举，值不对就整页空，所以逐个试
+        // 页面那条请求的参数最准，只改分页
+        _driveReplay(root) {
+            if (!driveTrace.url || !driveTrace.body) return null;
+            try {
+                let body = JSON.parse(driveTrace.body);
+                if (!body || typeof body !== 'object') return null;
+                body.start = 0;
+                body.pagesize = 100;
+                if (body.folder_id === undefined && root) body.folder_id = root;
+                return body;
+            } catch (e) {
+                return null;
+            }
+        },
+        // 根目录不是 '0'，先问出真实 folder id
+        async _driveRoot(space) {
+            let ws = space.id || space.workspace_id || space.space_id;
+            let pick = (o) => {
+                let d = (o && o.data) || o || {};
+                let f = d.folder || d.root || d.current || (o && o.folder) || {};
+                let v = String(f.fid || f.id || f.folder_id || '');
+                return /^d?\d+$/.test(v) ? v : '';
+            };
+            try {
+                let v = pick(await this._drivePost('/v4/file/browse/folder-tree', { workspace_id: ws }));
+                if (v) return v;
+            } catch (e) { }
+            try {
+                let v = pick(await this._drivePost('/v4/file/browse/find-by-path', { workspace_id: ws, path: '/' }));
+                if (v) return v;
+            } catch (e) { }
+            return '';
+        },
+        async _driveList(space) {
+            if (driveTrace.url && driveTrace.body) {
+                try {
+                    let b = JSON.parse(driveTrace.body);
+                    if (b && typeof b === 'object') {
+                        b.start = 0;
+                        let res = await this._drivePost(driveTrace.url, b);
+                        let items = this._driveItems(res);
+                        if (items.length) return items;
+                    }
+                } catch (e) {
+                    console.warn('[FerryLink] ctfile 照抄页面请求失败：', e && e.message);
+                }
+            }
+            let root = await this._driveRoot(space);
+            if (!root) console.warn('[FerryLink] ctfile 换不到根目录 id，退回 0：', space);
+            let ws = space.id || space.workspace_id || space.space_id;
+            let folders = root ? [root] : [this._driveFolder(), 'd0', null];
+            let plan = [this._driveReplay(root)];
+            folders.forEach(f => {
+                plan.push({ orderby: 'new', folder_id: f });
+                plan.push({ orderby: 'date', folder_id: f });
+            });
+            plan = plan.filter(Boolean);
+            let last = null, err = null;
+            for (let i = 0; i < plan.length; i++) {
+                let body = Object.assign({
+                    workspace_id: space.id || space.workspace_id || space.space_id,
+                    folder_id: this._driveFolder(), filter: 'all', keyword: '', start: 0, pagesize: 100
+                }, plan[i]);
+                let res;
+                try {
+                    res = await this._drivePost('/v4/file/browse/list', body);
+                } catch (e) {
+                    err = e;
+                    continue;
+                }
+                last = res;
+                if (res && res.code && res.code !== 200) {
+                    err = new Error(res.msg || ('城通返回 ' + res.code));
+                    continue;
+                }
+                let items = this._driveItems(res);
+                if (items.length) {
+                    return items;
+                }
+            }
+            if (!last && err) throw err;
+            console.warn('[FerryLink] ctfile 列表始终为空：', space);
+            return [];
+        },
+        // 文件夹在城通用 fid 首字母 d 标记，没有别的字段可依赖
+        _isDriveFile(it) {
+            let raw = String((it && (it.fid || it.file_id || it.id)) || '');
+            if (!raw || /^d/.test(raw)) return false;
+            return !(it.kind === 'folder' || it.type === 'folder' || it.is_dir || it.is_folder || it.ext === 'folder');
+        },
+        async _driveSpaces() {
+            let kind = (location.hash.match(/#\/(public|private)/) || [])[1] || 'public';
+            let res = await this._drivePost('/v4/workspace/manage/list', { start: 0, pagesize: 100 });
+            let spaces = (res && res.workspaces) || (res && res.data && res.data.workspaces) || [];
+            let kof = s => s.kind || s.type || s.workspace_type || '';
+            let hit = spaces.filter(s => kof(s) === kind);
+            let rest = spaces.filter(s => kof(s) !== kind);
+            if (!hit.length && spaces.length) console.warn('[FerryLink] ctfile 没有 ' + kind + ' 空间，依次试：', spaces);
+            return hit.concat(rest);
+        },
+        _driveFolder() {
+            let m = location.hash.match(/#\/(?:public|private)\/(\d+)/);
+            return m ? m[1] : '0';
+        },
+        // 无签名地址打不开，带 cts/ctk/chk 的才是真直链
+        _deadLink(u) {
+            let v = String(u || '');
+            if (!v) return true;
+            return /ctcontents\.com/.test(v) && !/[?&](ctk|chk|cts)=/.test(v);
+        },
+        _driveCheckedNames() {
+            let names = [];
+            let push = (el) => {
+                let t = $(el).text().replace(/\s+/g, ' ').trim();
+                if (t && names.indexOf(t) === -1) names.push(t);
+            };
+            $('input[type=checkbox], input[type=radio]').filter(function () { return this.checked; }).each(function () {
+                let row = $(this).closest('tr, li, [role=row], [class*=row], [class*=item], [class*=card]');
+                if (row.length) push(row[0]);
+            });
+            $('[aria-selected="true"], .is-selected, .selected, .is-checked').each(function () { push(this); });
+            return names.slice(0, 40);
+        },
+        // 文件数组在 data 里，字段名各版本不一，几种写法都试
+        _driveItems(res) {
+            let d = (res && res.data) || {};
+            let cands = [d.results, d.files, d.items, d.list, d.rows,
+                res && res.results, res && res.files, res && res.items, res && res.list, res && res.rows];
+            for (let i = 0; i < cands.length; i++) if (Array.isArray(cands[i]) && cands[i].length) return cands[i];
+            return [];
+        },
+        _fid(it, raw) {
+            let v = it && (it.fid || it.file_id || it.id);
+            if (v === undefined || v === null || v === '') return '';
+            v = String(v);
+            return raw || /^f/.test(v) ? v : 'f' + v;
+        },
+        _name(it) {
+            return (it && (it.name || it.file_name || it.filename)) || '';
+        },
+        // 尺寸有字节数和 "37.92 MB" 两种写法
+        _sizeOf(v) {
+            if (typeof v === 'number') return v;
+            let m = String(v == null ? '' : v).match(/^([\d.]+)\s*([KMGT]?B)?/i);
+            if (!m) return 0;
+            let unit = { B: 1, KB: 1024, MB: 1048576, GB: 1073741824, TB: 1099511627776 };
+            return Math.round((parseFloat(m[1]) || 0) * (unit[(m[2] || 'B').toUpperCase()] || 1));
+        },
+        async _fileLink(ref) {
+            let meta = await base.get('https://webapi.ctfile.com/getfile.php?path=f&f=' + encodeURIComponent(ref.id) + '&passcode=' + encodeURIComponent(ref.pass) + '&token=false&r=' + Math.random());
+            let info = meta && meta.file;
+            if (!info || !info.file_chk) return base.renderErrorPanel('读取文件信息失败：' + ((info && info.message) || (meta && meta.msg) || '请确认提取码后重试'), this);
+            let link = await this._linkOf({ kind: 'file', id: ref.id, folder_id: '0', fk: '', passcode: ref.pass, type_id: '0' }, info.verifycode, {
+                file_id: info.file_id, userid: info.userid, file_chk: info.file_chk, start_time: info.start_time, wait_seconds: info.wait_seconds
+            });
+            if (!link) return base.renderErrorPanel('取不到下载地址：提取码可能不对，或需要验证码', this);
+            base.renderDownloadPanel([this._fileRow(info, link)], this);
+        },
+        async _dirLink(ref) {
+            let rows = await this._listing(ref);
+            let files = rows.filter(r => r.kind === 'file' && r.original_file);
+            if (!files.length) return base.renderErrorPanel('目录里没有可取的文件，请先进入子文件夹', this);
+            let picked = this._checkedRowIds();
+            if (picked.length) files = files.filter(r => picked.indexOf(r.id) !== -1);
+            if (!files.length) return base.renderErrorPanel('勾选的文件不在本页，或全是文件夹', this);
+            if (files.length > 40) return base.renderErrorPanel('一次最多取 40 个文件，当前 ' + files.length + ' 个，请勾选后再试', this);
+            let list = [];
+            for (let i = 0; i < files.length; i++) {
+                let r = files[i];
+                if (files.length > 1) base.tipLoading('正在获取下载链接 ' + (i + 1) + '/' + files.length + '…');
+                let hrefId = (String(r.href || '').match(/#\/f\/(.+)$/) || [])[1];
+                let link = hrefId ? await this._linkOf({ kind: 'file', id: hrefId, folder_id: '0', fk: '', passcode: ref.pass, type_id: '0' }, r.verifycode, r.original_file) : '';
+                list.push(this._fileRow({ file_name: r.name, file_size: r.size_bytes }, link, r));
+            }
+            base.renderDownloadPanel(list, this);
+        },
+        async _listing(ref) {
+            let rows = [];
+            for (let page = 0; page < 5; page++) {
+                let res = await base.get('https://urlapi.ctfile.com/api/v2/listing?kind=dir&id=' + encodeURIComponent(ref.id) + '&folder_id=0&fk=&passcode=' + encodeURIComponent(ref.pass) + '&type_id=0&start=' + rows.length + '&length=200');
+                if (res && res.code && res.code !== 200) throw new Error(res.msg || ('城通返回 ' + res.code));
+                let d = res && res.data;
+                let batch = (d && d.rows) || [];
+                rows = rows.concat(batch);
+                if (!batch.length || !d.hasMore) break;
+            }
+            return rows;
+        },
+        // 临时 id 在 href 上，凭据只能用列表返回的那份
+        async _linkOf(context, verifycode, original) {
+            let res = await base.post('https://urlapi.ctfile.com/api/v2/download', {
+                context: context, mb: 0, app: 0, verifycode: String(verifycode || ''), original_file: original
+            }, { 'content-type': 'application/json' });
+            let d = (res && res.data) || res || {};
+            return d.downurl || d.url || d.download_url || '';
+        },
+        _fileRow(info, link, raw) {
+            let bytes = this._sizeOf(info.file_size);
+            return {
+                filename: info.file_name || '',
+                sizeStr: base.sizeFormat(bytes),
+                rawSize: bytes,
+                dlink: link || '',
+                isFolder: false,
+                raw: raw || info,
+            };
+        },
+        _checkedRowIds() {
+            let ids = [];
+            $('tr[data-row-id] input[type=checkbox]').each(function () {
+                if (this.checked) ids.push($(this).closest('tr').attr('data-row-id'));
+            });
+            return ids.filter(Boolean);
+        },
+        async sendLinkToRPC(filename, link) {
+            let rpc = base._rpcConfig();
+            if (!rpc) return 'fail';
+            let url = rpc.url;
+            let rpcData = {
+                id: new Date().getTime(),
+                jsonrpc: '2.0',
+                method: 'aria2.addUri',
+                params: [`token:${rpc.token}`, [link], {
+                    dir: rpc.dir,
+                    out: base.safeRpcFilename(filename),
+                    header: []
+                }]
+            };
+            try {
+                let res = await base.post(url, rpcData, {}, '');
+                if (res.result) return 'success';
+                base.panelNotice('Aria2 拒绝请求：' + ((res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
+                return 'fail';
+            } catch (e) {
+                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
+                return 'fail';
+            }
+        },
+        detectPage() {
+            let m = /^\/(f|d)\//.exec(location.pathname);
+            if (m) return m[1] === 'd' ? 'dir' : 'file';
+            if (/#\/(public|private)/.test(location.hash)) return 'drive';
+            return '';
+        },
+        async initPanLinker() {
+            base.initDefaultConfig();
+            base.addPanLinkerStyle();
+            pageNum = this.detectPage();
+            panInfo = {};
+            this.addButton();
+            this.addPageListener();
+            base.createTip();
+            base.registerMenuCommand();
+            this._watchHash();
+        }
+    };
     let main = {
         init() {
             base.migrate();
@@ -3605,6 +4327,9 @@
             }
             if (/(yun|caiyun).139.com/.test(location.host)) {
                 yidong.initPanLinker();
+            }
+            if (/(^|\.)ctfile\.(com|net|cn)$|(^|\.)545c\.com$/.test(location.host)) {
+                ctfile.initPanLinker();
             }
         }
     };
