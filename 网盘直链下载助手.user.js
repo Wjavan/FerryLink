@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              FerryLink
 // @namespace         https://github.com/Wjavan/FerryLink
-// @version           1.5.1
+// @version           1.6.0
 // @author            Wjavan
 // @description       支持百度/阿里/天翼/迅雷/夸克/移动/城通网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/NDM/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
 // @copyright         2026, Wjavan (https://github.com/Wjavan)
@@ -293,7 +293,7 @@
         },
         migrate() {
             const MARK = 'ferrylink_migrated_version';
-            const VERSION = '1.5.1';
+            const VERSION = '1.6.0';
             try {
                 if (GM_getValue(MARK, '') === VERSION) return;
                 ['shareToken', 'share_token', 'ferrylink_last_downloader', 'ferrylink_last_protocol'].forEach((k) => {
