@@ -3895,8 +3895,8 @@
         },
         _watchHash() {
             window.addEventListener('hashchange', () => {
-                if (pageNum !== 'drive') return;
-                if (this.detectPage() === 'drive') {
+                pageNum = this.detectPage();
+                if (pageNum === 'drive') {
                     if (!$('.ctfile-button.pl-button').length) this._mountDriveBtn();
                     return;
                 }
@@ -4290,6 +4290,8 @@
             let m = /^\/(f|d)\//.exec(location.pathname);
             if (m) return m[1] === 'd' ? 'dir' : 'file';
             if (/#\/(public|private)/.test(location.hash)) return 'drive';
+            // 页面脚本晚一步才补上 hash，域名已经能说明是个人网盘
+            if (/(^|\.)drive\.ctfile\.com$/.test(location.host)) return 'drive';
             return '';
         },
         async initPanLinker() {
