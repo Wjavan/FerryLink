@@ -2017,8 +2017,8 @@
             .yidong-button { float: left; position: relative; margin: 20px 24px 20px 0; width: 98px; height: 36px; background: #3181f9; border-radius: 2px; font-size: 14px; color: #fff; line-height: 36px; text-align: center; cursor: pointer; min-height: 32px; transition: background .3s ease; }
             .yidong-button:hover { background: #2d76e5; }
             .yidong-button:focus-visible { outline: 2px solid #3181f9; outline-offset: 2px; }
-            .quark-button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #ddd; border-radius: 8px; white-space: nowrap; flex-shrink: 0; font-size: 14px; line-height: 1.5; outline: 0; color: #333; background: #fff; margin-right: 10px; padding: 0 14px; position: relative; cursor: pointer; height: 36px; min-height: 32px; transition: background .3s ease; }
-            .quark-button:hover { background: #f6f6f6; }
+            .quark-button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #0d53ff; border-radius: 8px; white-space: nowrap; flex-shrink: 0; font-size: 12px; font-weight: 600; line-height: 1.5; outline: 0; color: #fff; background: #0d53ff; margin-right: 10px; padding: 0 10px; position: relative; cursor: pointer; height: 36px; min-height: 32px; transition: background .3s ease; }
+            .quark-button:hover { background: #3a72ff; border-color: #3a72ff; }
             .quark-button:focus-visible { outline: 2px solid #3f85ff; outline-offset: 2px; }
             .ctfile-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; margin: 6px; height: 48px; padding: 0 24px; border: 1px solid #1677ff; border-radius: 8px; background: #1677ff; color: #fff; font-family: inherit; font-size: 16px; font-weight: 700; line-height: 1; white-space: nowrap; flex-shrink: 0; cursor: pointer; transition: background-color .15s, border-color .15s, box-shadow .15s; }
             .ctfile-button:hover { background: #0958d9; border-color: #0958d9; }
@@ -3389,7 +3389,7 @@
         addButton() {
             if (!pageNum) return;
             let $toolWrap;
-            let $button = $(`<div class="quark-button pl-button"><svg width="22" height="22" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#555" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 2-2z"/><path d="M14 8h1.553c.85 0 1.16.093 1.47.267.311.174.556.43.722.756.166.326.255.65.255 1.54v4.873c0 .892-.089 1.215-.255 1.54-.166.327-.41.583-.722.757-.31.174-.62.267-1.47.267H6.447c-.85 0-1.16-.093-1.47-.267a1.778 1.778 0 01-.722-.756c-.166-.326-.255-.65-.255-1.54v-4.873c0-.892.089-1.215.255-1.54.166-.327.41-.583.722-.757.31-.174.62-.267 1.47-.267H11"/><path stroke-linecap="round" stroke-linejoin="round" d="M11 3v10"/></g></svg><b>下载助手</b></div>`);
+            let $button = $(`<div class="quark-button pl-button"><svg width="22" height="22" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 2-2z"/><path d="M14 8h1.553c.85 0 1.16.093 1.47.267.311.174.556.43.722.756.166.326.255.65.255 1.54v4.873c0 .892-.089 1.215-.255 1.54-.166.327-.41.583-.722.757-.31.174-.62.267-1.47.267H6.447c-.85 0-1.16-.093-1.47-.267a1.778 1.778 0 01-.722-.756c-.166-.326-.255-.65-.255-1.54v-4.873c0-.892.089-1.215.255-1.54.166-.327.41-.583.722-.757.31-.174.62-.267 1.47-.267H11"/><path stroke-linecap="round" stroke-linejoin="round" d="M11 3v10"/></g></svg><span>下载助手</span></div>`);
             if (pageNum === 'home') {
                 base.listenElement(panInfo.btn.home, () => {
                     $toolWrap = $(panInfo.btn.home);
