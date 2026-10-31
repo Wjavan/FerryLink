@@ -1281,14 +1281,13 @@
                 return `<div class="fl-dl-chip${active}" data-type="downloader" data-id="${d.id}">${d.name}</div>`;
             }).join('');
 
-            const intro = '已支持六大网盘直链；下载方式覆盖浏览器/IDM/Aria2/Motrix/XDown/BitComet/终端。未选择下载器时展示全部协议，选择下载器后自动筛选可用协议。百度直链带有效期，获取后请尽快使用。';
+            const intro = '未选择下载器时展示全部协议，选择下载器后自动筛选可用协议。<br><b>直链带有效期，获取后请尽快使用。</b>';
             const badCount = files.filter(f => f.isFolder || !f.dlink || !/^https?:\/\//.test(f.dlink)).length;
             const countLine = files.length === 0 ? '' : `<div class="fl-dl-file-count">共 ${files.length} 个文件${badCount ? '，' + badCount + ' 个不可操作' : ''}</div>`;
             const emptyHtml = files.length === 0 ? '<div class="fl-dl-empty"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg><div class="fl-dl-empty-title">请先在页面中选择文件</div></div>' : `${countLine}<div class="fl-dl-files" id="fl-dl-files">${fileRows}</div>`;
 
             const html = `<div class="fl-dl-panel">
                 <div class="fl-dl-intro">${intro}</div>
-                <div class="fl-dl-warning-bar" id="fl-dl-rpc-warning">尚未配置 Aria2 / Motrix 的 RPC 参数，请先完成配置</div>
                 ${emptyHtml}
                 <div class="fl-dl-section">
                     <div class="fl-dl-section-label">选择下载器 ${base._defaultBtnHtml()}</div>
@@ -1646,8 +1645,7 @@
                 setTimeout(() => base._updateMainButton(), 4000);
             } else if (pid === 'rpc') {
                 const d = base.getValue('setting_rpc_domain'), p = base.getValue('setting_rpc_port'), pa = base.getValue('setting_rpc_path');
-                if (!d || !p || !pa) { $('#fl-dl-rpc-warning').show(); base.showRPCSetting(false); return; }
-                $('#fl-dl-rpc-warning').hide();
+                if (!d || !p || !pa) { base.showRPCSetting(false); return; }
                 $btn.text('正在推送 ' + files.length + ' 个任务至 RPC…').prop('disabled', true);
                 let ok = 0, fail = 0;
                 for (let f of files) {
@@ -1986,6 +1984,8 @@
             .fl-dl-toast-error { border-color: #f56c6c; color: #f89898; }
             .fl-dl-empty { color: #8b8e93; }
             .fl-dl-empty svg { color: #5e6165; }
+            .fl-dl-intro { background: #2a2b2c; border: 1px solid #343536; color: #a8abb0; }
+            .fl-dl-intro b { color: #e8eaed; }
             .fl-dl-error { color: #e06c75; }
             .fl-dl-retry { background: #2a2b2c; border-color: ${color}; color: ${color}; }
             .fl-dl-retry:hover { background: ${color}22; }
@@ -2072,14 +2072,15 @@
                         .btn-operate .btn-main { display:flex; align-items:center; }
             /* ---- L3 UI 层：下载面板样式 fl-dl-* ---- */
             .fl-dl-panel { width: 100%; font-size: 13.5px; }
-            .fl-dl-intro { font-size: 13.5px; color: #606266; line-height: 1.7; margin-bottom: 12px; }
+            .fl-dl-intro { font-size: 13px; color: #606266; line-height: 1.65; margin-bottom: 12px; padding: 10px 14px; border-radius: 8px; background: #f5f6f7; }
+            .fl-dl-intro b { color: #303133; font-weight: 600; }
             .fl-dl-intro a { color: ${color}; }
             .fl-dl-help { font-size: 12.5px; color: #6b7078; margin-top: 10px; }
             /* 宿主页会重置裸链接的字号字体，让「帮助：」偏高，这里用 font: inherit 对齐 */
             .fl-dl-help a { color: ${color}; text-decoration: none; font: inherit; vertical-align: baseline; }
             .fl-dl-help a:hover { text-decoration: underline; }
             .fl-dl-btn:focus-visible, .fl-dl-chip:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
-            .fl-dl-files { max-height: 320px; overflow-y: auto; margin: 0 -10px; padding: 0 10px; border-top: 1px solid #e6e8eb; border-bottom: 1px solid #e6e8eb; }
+            .fl-dl-files { max-height: 320px; overflow-y: auto; margin: 0 -10px; padding: 0 10px; border-top: 1px solid #e6e8eb; }
             .fl-dl-file-count { font-size: 12.5px; color: #6b7078; margin-bottom: 6px; font-weight: 600; }
             /* 左右各外扩 10px 再由 padding 抵消，让 hover 底色与列表上下通栏边线同宽同齐 */
             .fl-dl-file-row { display: flex; align-items: center; gap: 10px; margin: 0 -10px; padding: 8px 20px; transition: background 180ms; }
