@@ -78,7 +78,7 @@
     // 列表参数只有页面知道，记下它发的那条请求
     const driveHdrs = {};          // 城通给的下载地址常配一组头，按 URL 存
     const BTN_ICON = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 3v9"></path><path d="M5 8l4 4 4-4"></path><path d="M3 12v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3"></path></svg>';
-    const ROW_BUTTON = '<div class="ctfile-button ctfile-button-peer pl-button" title="下载助手">' + BTN_ICON + '下载助手</div>';
+    const ROW_BUTTON = '<div class="ctfile-button ctfile-button-peer fl-button" title="下载助手">' + BTN_ICON + '下载助手</div>';
     const clampGap = (v) => Math.max(-40, Math.min(40, Math.round(v)));
     const driveTrace = { url: '', body: '' };
     if (/drive\.ctfile\.com/.test(location.host)) {
@@ -111,8 +111,8 @@
     let pageNum = '', selectedFiles = [], panInfo = {}, color = '',
         doc = $(document), downloadProgress = {}, pendingRequests = {}, intervals = {};
 
-    const MARK_OK = '<span class="pl-mark ok">✓</span>';
-    const MARK_NO = '<span class="pl-mark no">✗</span>';
+    const MARK_OK = '<span class="fl-mark ok">✓</span>';
+    const MARK_NO = '<span class="fl-mark no">✗</span>';
     let downloadState = { downloader: '', protocol: '' };
 
     const DOWNLOADERS = [
@@ -390,15 +390,15 @@
             const same = !!d && downloadState.downloader === d.downloader && downloadState.protocol === d.protocol;
             const star = '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M6 1.5l1.4 2.8 3.1.45-2.25 2.2.53 3.1L6 8.6 3.22 10.05l.53-3.1L1.5 4.75l3.1-.45z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
             if (!same) {
-                return `<button type="button" id="pl-dl-default-btn" class="pl-dl-default-btn listener-dl-set-default" title="记住当前的下载器与协议，下次打开面板自动选中">${star}<span>设为默认</span></button>`;
+                return `<button type="button" id="fl-dl-default-btn" class="fl-dl-default-btn listener-dl-set-default" title="记住当前的下载器与协议，下次打开面板自动选中">${star}<span>设为默认</span></button>`;
             }
             const starOn = star.replace('fill="none"', 'fill="currentColor"');
-            const cross = '<svg class="pl-dl-default-x" viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M2.8 2.8l6.4 6.4M9.2 2.8L2.8 9.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
-            return `<button type="button" id="pl-dl-default-btn" class="pl-dl-default-btn is-set listener-dl-set-default" title="当前默认下载方式，点此取消">${starOn}<span class="pl-dl-default-tag">默认</span><span class="pl-dl-default-name">${base.esc(base._defaultNames())}</span>${cross}</button>`;
+            const cross = '<svg class="fl-dl-default-x" viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M2.8 2.8l6.4 6.4M9.2 2.8L2.8 9.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+            return `<button type="button" id="fl-dl-default-btn" class="fl-dl-default-btn is-set listener-dl-set-default" title="当前默认下载方式，点此取消">${starOn}<span class="fl-dl-default-tag">默认</span><span class="fl-dl-default-name">${base.esc(base._defaultNames())}</span>${cross}</button>`;
         },
         // 按当前选择改称呼，只有等于默认才给 ✕
         _syncDefaultBtn() {
-            const $b = $('#pl-dl-default-btn');
+            const $b = $('#fl-dl-default-btn');
             if (!$b.length) return;
             const html = base._defaultBtnHtml();
             if ($b[0].outerHTML !== html) $b.replaceWith(html);
@@ -652,35 +652,35 @@
             const idmId = base._idmId();
             let colorBtn = '';
             ['#09AAFF', '#cc3235', '#526efa', '#518c17', '#ed944b', '#f969a5', '#bca280'].forEach((v) => {
-                colorBtn += `<div data-color="${v}" style="background: ${v};border: 1px solid ${v}" class="pl-color-box listener-color ${v === base.getValue('setting_theme_color') ? 'checked' : ''}" tabindex="0" role="button"></div>`;
+                colorBtn += `<div data-color="${v}" style="background: ${v};border: 1px solid ${v}" class="fl-color-box listener-color ${v === base.getValue('setting_theme_color') ? 'checked' : ''}" tabindex="0" role="button"></div>`;
             });
             let termOpts = '';
             Object.keys(terminalType).forEach(k => {
                 termOpts += `<option value="${k}" ${base.getValue('setting_terminal_type') === k ? 'selected' : ''}>${terminalType[k]}</option>`;
             });
-            const dom = `<div class="pl-setting-list">
-                <div class="pl-setting-row pl-setting-row-click listener-open-idm-setting">
-                    <div class="pl-setting-row-main"><div class="pl-setting-row-name">IDM 客户端</div><div class="pl-setting-row-sub">客户端 ID：${base.esc(idmId)}</div></div>
+            const dom = `<div class="fl-setting-list">
+                <div class="fl-setting-row fl-setting-row-click listener-open-idm-setting">
+                    <div class="fl-setting-row-main"><div class="fl-setting-row-name">IDM 客户端</div><div class="fl-setting-row-sub">客户端 ID：${base.esc(idmId)}</div></div>
                 </div>
-                <div class="pl-setting-row pl-setting-row-click listener-open-rpc-setting">
-                    <div class="pl-setting-row-main"><div class="pl-setting-row-name">Aria 配置</div><div class="pl-setting-row-sub">${base.esc(rpcVal)}</div></div>
+                <div class="fl-setting-row fl-setting-row-click listener-open-rpc-setting">
+                    <div class="fl-setting-row-main"><div class="fl-setting-row-name">Aria 配置</div><div class="fl-setting-row-sub">${base.esc(rpcVal)}</div></div>
                 </div>
-                <div class="pl-setting-row pl-setting-row-click listener-open-bc-setting">
-                    <div class="pl-setting-row-main"><div class="pl-setting-row-name">BitComet 配置</div><div class="pl-setting-row-sub">${base.esc(base.getValue('setting_bitcomet_domain') || '')}:${base.esc(base.getValue('setting_bitcomet_port') || '')}${base.esc(base.getValue('setting_bitcomet_path') || '')}</div></div>
+                <div class="fl-setting-row fl-setting-row-click listener-open-bc-setting">
+                    <div class="fl-setting-row-main"><div class="fl-setting-row-name">BitComet 配置</div><div class="fl-setting-row-sub">${base.esc(base.getValue('setting_bitcomet_domain') || '')}:${base.esc(base.getValue('setting_bitcomet_port') || '')}${base.esc(base.getValue('setting_bitcomet_path') || '')}</div></div>
                 </div>
-                <div class="pl-setting-row">
-                    <div class="pl-setting-row-main"><div class="pl-setting-row-name">终端类型</div></div>
-                    <select class="pl-input listener-terminal pl-setting-select">${termOpts}</select>
+                <div class="fl-setting-row">
+                    <div class="fl-setting-row-main"><div class="fl-setting-row-name">终端类型</div></div>
+                    <select class="fl-input listener-terminal fl-setting-select">${termOpts}</select>
                 </div>
-                <div class="pl-setting-row">
-                    <div class="pl-setting-row-main"><div class="pl-setting-row-name">主题颜色</div></div>
-                    <div class="pl-color">${colorBtn}</div>
+                <div class="fl-setting-row">
+                    <div class="fl-setting-row-main"><div class="fl-setting-row-name">主题颜色</div></div>
+                    <div class="fl-color">${colorBtn}</div>
                 </div>
-                <div class="pl-setting-row">
-                    <div class="pl-setting-row-main"><div class="pl-setting-row-name">深色模式</div><div class="pl-setting-row-sub listener-theme-mode-sub">${({ light: '浅色', dark: '深色' })[base.getValue('setting_theme_mode') || 'light'] || '浅色'}</div></div>
-                    <button type="button" class="pl-input listener-theme-mode pl-setting-theme-btn">${({ light: '浅色', dark: '深色' })[base.getValue('setting_theme_mode') || 'light'] || '浅色'}</button>
+                <div class="fl-setting-row">
+                    <div class="fl-setting-row-main"><div class="fl-setting-row-name">深色模式</div><div class="fl-setting-row-sub listener-theme-mode-sub">${({ light: '浅色', dark: '深色' })[base.getValue('setting_theme_mode') || 'light'] || '浅色'}</div></div>
+                    <button type="button" class="fl-input listener-theme-mode fl-setting-theme-btn">${({ light: '浅色', dark: '深色' })[base.getValue('setting_theme_mode') || 'light'] || '浅色'}</button>
                 </div>
-                <div class="pl-setting-help">帮助：<a href="https://www.youxiaohou.com/zh-cn/motrix.html" target="_blank" rel="noreferrer noopener">RPC 配置说明</a> · <a href="https://www.youxiaohou.com/zh-cn/curl.html" target="_blank" rel="noreferrer noopener">cURL 使用教程</a> · <a href="https://github.com/Wjavan/FerryLink" target="_blank" rel="noreferrer noopener">项目主页</a></div>
+                <div class="fl-setting-help">帮助：<a href="https://www.youxiaohou.com/zh-cn/motrix.html" target="_blank" rel="noreferrer noopener">RPC 配置说明</a> · <a href="https://www.youxiaohou.com/zh-cn/curl.html" target="_blank" rel="noreferrer noopener">cURL 使用教程</a> · <a href="https://github.com/Wjavan/FerryLink" target="_blank" rel="noreferrer noopener">项目主页</a></div>
             </div>`;
             Swal.fire({
                 title: '助手配置',
@@ -711,13 +711,13 @@
         },
         showRPCSetting(fromSetting) {
             const dom = `<div>
-                <div class="pl-dl-warning-bar" style="display:block">本页配置 Aria2 / Motrix 的 JSON-RPC 参数：Aria2 默认端口 6800、Motrix 默认 16800，按实际运行的客户端填写即可。</div>
-                <label class="pl-setting-label"><div class="pl-label">RPC主机</div><input type="text" placeholder="主机地址，需带上http(s)://" class="pl-input listener-domain" value="${base.esc(base.getValue('setting_rpc_domain'))}"></label>
-                <label class="pl-setting-label"><div class="pl-label">RPC端口</div><input type="text" placeholder="端口号，例如：Motrix为16800" class="pl-input listener-port" value="${base.esc(base.getValue('setting_rpc_port'))}"></label>
-                <label class="pl-setting-label"><div class="pl-label">RPC路径</div><input type="text" placeholder="路径，默认为/jsonrpc" class="pl-input listener-path" value="${base.esc(base.getValue('setting_rpc_path'))}"></label>
-                <label class="pl-setting-label"><div class="pl-label">RPC密钥</div><input type="text" placeholder="无密钥无需填写" class="pl-input listener-token" value="${base.esc(base.getValue('setting_rpc_token'))}"></label>
-                <label class="pl-setting-label"><div class="pl-label">保存路径</div><input type="text" placeholder="留空则使用 aria2 默认下载目录；Windows 示例：C:\\Downloads" class="pl-input listener-dir" value="${base.esc(base.getValue('setting_rpc_dir'))}"></label>
-                <div class="pl-setting-actions"><button type="button" class="pl-dl-btn pl-dl-btn-secondary listener-reset-rpc">恢复默认</button><button type="button" class="pl-dl-btn pl-dl-btn-secondary listener-test-rpc">测试连接</button></div>
+                <div class="fl-dl-warning-bar" style="display:block">本页配置 Aria2 / Motrix 的 JSON-RPC 参数：Aria2 默认端口 6800、Motrix 默认 16800，按实际运行的客户端填写即可。</div>
+                <label class="fl-setting-label"><div class="fl-label">RPC主机</div><input type="text" placeholder="主机地址，需带上http(s)://" class="fl-input listener-domain" value="${base.esc(base.getValue('setting_rpc_domain'))}"></label>
+                <label class="fl-setting-label"><div class="fl-label">RPC端口</div><input type="text" placeholder="端口号，例如：Motrix为16800" class="fl-input listener-port" value="${base.esc(base.getValue('setting_rpc_port'))}"></label>
+                <label class="fl-setting-label"><div class="fl-label">RPC路径</div><input type="text" placeholder="路径，默认为/jsonrpc" class="fl-input listener-path" value="${base.esc(base.getValue('setting_rpc_path'))}"></label>
+                <label class="fl-setting-label"><div class="fl-label">RPC密钥</div><input type="text" placeholder="无密钥无需填写" class="fl-input listener-token" value="${base.esc(base.getValue('setting_rpc_token'))}"></label>
+                <label class="fl-setting-label"><div class="fl-label">保存路径</div><input type="text" placeholder="留空则使用 aria2 默认下载目录；Windows 示例：C:\\Downloads" class="fl-input listener-dir" value="${base.esc(base.getValue('setting_rpc_dir'))}"></label>
+                <div class="fl-setting-actions"><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-reset-rpc">恢复默认</button><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-test-rpc">测试连接</button></div>
             </div>`;
             Swal.fire({
                 title: 'Aria 配置',
@@ -727,7 +727,7 @@
                 target: document.body,
                 customClass: {
                     container: 'ferrylink-swal-container',
-                    popup: 'ferrylink-swal-popup pl-popup-flip'
+                    popup: 'ferrylink-swal-popup fl-popup-flip'
                 },
                 didOpen: () => {
                     const container = Swal.getContainer();
@@ -745,8 +745,8 @@
         showIDMSetting(fromSetting) {
             const idmId = base._idmId();
             const dom = `<div>
-                <label class="pl-setting-label"><div class="pl-label">客户端 ID</div><input type="text" placeholder="IDM 多配置时的客户端编号，默认 1" class="pl-input listener-idm-id" value="${base.esc(idmId)}"></label>
-                <div class="pl-setting-tip-text">Client ID 是 IDM 用来区分不同浏览器捕获扩展的编号，多浏览器需各配一个，填错会导致推送失败，一般保持默认 1 即可。取值方法：浏览器进入 IDM 扩展的「管理扩展/调试附加组件」检查视图，在 DevTools 的「应用程序/存储 → 扩展存储 → 本地」里找 client 对应的数字。</div>
+                <label class="fl-setting-label"><div class="fl-label">客户端 ID</div><input type="text" placeholder="IDM 多配置时的客户端编号，默认 1" class="fl-input listener-idm-id" value="${base.esc(idmId)}"></label>
+                <div class="fl-setting-tip-text">Client ID 是 IDM 用来区分不同浏览器捕获扩展的编号，多浏览器需各配一个，填错会导致推送失败，一般保持默认 1 即可。取值方法：浏览器进入 IDM 扩展的「管理扩展/调试附加组件」检查视图，在 DevTools 的「应用程序/存储 → 扩展存储 → 本地」里找 client 对应的数字。</div>
             </div>`;
             Swal.fire({
                 title: 'IDM 客户端设置',
@@ -756,7 +756,7 @@
                 target: document.body,
                 customClass: {
                     container: 'ferrylink-swal-container',
-                    popup: 'ferrylink-swal-popup pl-popup-flip'
+                    popup: 'ferrylink-swal-popup fl-popup-flip'
                 },
                 didOpen: () => {
                     const container = Swal.getContainer();
@@ -779,13 +779,13 @@
             const pass = base.getValue('setting_bitcomet_pass') || '';
             const dir = base.getValue('setting_bitcomet_dir') || '';
             const dom = `<div>
-                <label class="pl-setting-label"><div class="pl-label">服务器地址</div><input type="text" placeholder="主机地址，需带上http(s)://" class="pl-input listener-bc-domain" value="${base.esc(domain)}"></label>
-                <label class="pl-setting-label"><div class="pl-label">服务器端口</div><input type="text" placeholder="端口号，一般为 8080" class="pl-input listener-bc-port" value="${base.esc(port)}"></label>
-                <label class="pl-setting-label"><div class="pl-label">请求路径</div><input type="text" placeholder="一般为 /panel/task_add_httpftp_result" class="pl-input listener-bc-path" value="${base.esc(path)}"></label>
-                <label class="pl-setting-label"><div class="pl-label">服务器账号</div><input type="text" placeholder="远程下载服务的账号，无账号无需填写" class="pl-input listener-bc-user" value="${base.esc(user)}"></label>
-                <label class="pl-setting-label"><div class="pl-label">服务器密码</div><input type="password" placeholder="远程下载服务的密码，无密码无需填写" class="pl-input listener-bc-pass" value="${base.esc(pass)}"></label>
-                <label class="pl-setting-label"><div class="pl-label">保存路径</div><input type="text" placeholder="文件下载后保存路径，留空则使用 BitComet 默认目录" class="pl-input listener-bc-dir" value="${base.esc(dir)}"></label>
-                <div class="pl-setting-actions"><button type="button" class="pl-dl-btn pl-dl-btn-secondary listener-reset-bc">恢复默认</button><button type="button" class="pl-dl-btn pl-dl-btn-secondary listener-test-bc">测试连接</button></div>
+                <label class="fl-setting-label"><div class="fl-label">服务器地址</div><input type="text" placeholder="主机地址，需带上http(s)://" class="fl-input listener-bc-domain" value="${base.esc(domain)}"></label>
+                <label class="fl-setting-label"><div class="fl-label">服务器端口</div><input type="text" placeholder="端口号，一般为 8080" class="fl-input listener-bc-port" value="${base.esc(port)}"></label>
+                <label class="fl-setting-label"><div class="fl-label">请求路径</div><input type="text" placeholder="一般为 /panel/task_add_httpftp_result" class="fl-input listener-bc-path" value="${base.esc(path)}"></label>
+                <label class="fl-setting-label"><div class="fl-label">服务器账号</div><input type="text" placeholder="远程下载服务的账号，无账号无需填写" class="fl-input listener-bc-user" value="${base.esc(user)}"></label>
+                <label class="fl-setting-label"><div class="fl-label">服务器密码</div><input type="password" placeholder="远程下载服务的密码，无密码无需填写" class="fl-input listener-bc-pass" value="${base.esc(pass)}"></label>
+                <label class="fl-setting-label"><div class="fl-label">保存路径</div><input type="text" placeholder="文件下载后保存路径，留空则使用 BitComet 默认目录" class="fl-input listener-bc-dir" value="${base.esc(dir)}"></label>
+                <div class="fl-setting-actions"><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-reset-bc">恢复默认</button><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-test-bc">测试连接</button></div>
             </div>`;
             Swal.fire({
                 title: 'BitComet 配置',
@@ -795,7 +795,7 @@
                 target: document.body,
                 customClass: {
                     container: 'ferrylink-swal-container',
-                    popup: 'ferrylink-swal-popup pl-popup-flip'
+                    popup: 'ferrylink-swal-popup fl-popup-flip'
                 },
                 didOpen: () => {
                     const container = Swal.getContainer();
@@ -969,8 +969,8 @@
         },
         panelNotice(text, type, ms) {
             base._lastNotice = text;
-            $('.pl-dl-toast').remove();
-            const $t = $(`<div class="pl-dl-toast${type ? ' pl-dl-toast-' + type : ''}"><span>${base.esc(text)}</span></div>`);
+            $('.fl-dl-toast').remove();
+            const $t = $(`<div class="fl-dl-toast${type ? ' fl-dl-toast-' + type : ''}"><span>${base.esc(text)}</span></div>`);
             $t.attr('role', type === 'error' ? 'alert' : 'status');
             $('body').append($t);
             $t.hide().fadeIn(180);
@@ -978,10 +978,10 @@
             this._noticeTimer = setTimeout(() => { $t.fadeOut(200, () => $t.remove()); }, ms || 2500);
         },
         createTip() {
-            doc.on('click', '.pl-dl-chip[data-type="downloader"]', (e) => {
+            doc.on('click', '.fl-dl-chip[data-type="downloader"]', (e) => {
                 const id = e.currentTarget.dataset.id;
                 const oldProto = downloadState.protocol;
-                $('.pl-dl-chip[data-type="downloader"]').removeClass('active');
+                $('.fl-dl-chip[data-type="downloader"]').removeClass('active');
                 if (downloadState.downloader === id) {
                     downloadState.downloader = '';
                     downloadState.protocol = '';
@@ -1000,10 +1000,10 @@
                 base._updateProtocolChips();
                 base._updateMainButton();
             });
-            doc.on('click', '.pl-dl-chip[data-type="protocol"]', (e) => {
+            doc.on('click', '.fl-dl-chip[data-type="protocol"]', (e) => {
                 if (!downloadState.downloader) { base.panelNotice('请先在上方选择下载器', 'info'); return; }
                 downloadState.protocol = e.currentTarget.dataset.id;
-                $('.pl-dl-chip[data-type="protocol"]').removeClass('active');
+                $('.fl-dl-chip[data-type="protocol"]').removeClass('active');
                 $(e.currentTarget).addClass('active');
                 base._updateMainButton();
                 base._paintLinkCells();
@@ -1057,7 +1057,7 @@
                     base.panelNotice('请先选择下载器和协议，再设为默认', 'info');
                     return;
                 }
-                $('#pl-dl-default-btn').replaceWith(base._defaultBtnHtml());
+                $('#fl-dl-default-btn').replaceWith(base._defaultBtnHtml());
             });
             doc.on('click', '.listener-open-setting', (e) => {
                 e.preventDefault();
@@ -1268,43 +1268,43 @@
                 else if (!f.dlink) reason = '该文件未返回下载链接（可能已失效或被禁止下载）';
                 else if (!/^https?:\/\//.test(f.dlink)) reason = f.dlink;
                 const linkText = f.dlink && /^https?:\/\//.test(f.dlink) ? f.dlink : reason;
-                return `<div class="pl-dl-file-row${gray ? ' pl-dl-gray' : ''}" data-index="${i}">
-                    <div class="pl-dl-file-name" title="${base.esc(f.filename)}">${base.esc(f.filename)}</div>
-                    <div class="pl-dl-file-size">${f.sizeStr || ''}</div>
-                    <div class="pl-dl-file-link" title="${base.esc(linkText)}">${base.esc(linkText)}</div>
-                    <div class="pl-dl-file-status" data-status-index="${i}"></div>
+                return `<div class="fl-dl-file-row${gray ? ' fl-dl-gray' : ''}" data-index="${i}">
+                    <div class="fl-dl-file-name" title="${base.esc(f.filename)}">${base.esc(f.filename)}</div>
+                    <div class="fl-dl-file-size">${f.sizeStr || ''}</div>
+                    <div class="fl-dl-file-link" title="${base.esc(linkText)}">${base.esc(linkText)}</div>
+                    <div class="fl-dl-file-status" data-status-index="${i}"></div>
                 </div>`;
             }).join('');
 
             const dlChips = DOWNLOADERS.map(d => {
                 const active = downloadState.downloader === d.id ? ' active' : '';
-                return `<div class="pl-dl-chip${active}" data-type="downloader" data-id="${d.id}">${d.name}</div>`;
+                return `<div class="fl-dl-chip${active}" data-type="downloader" data-id="${d.id}">${d.name}</div>`;
             }).join('');
 
             const intro = '已支持六大网盘直链；下载方式覆盖浏览器/IDM/Aria2/Motrix/XDown/BitComet/终端。未选择下载器时展示全部协议，选择下载器后自动筛选可用协议。百度直链带有效期，获取后请尽快使用。';
             const badCount = files.filter(f => f.isFolder || !f.dlink || !/^https?:\/\//.test(f.dlink)).length;
-            const countLine = files.length === 0 ? '' : `<div class="pl-dl-file-count">共 ${files.length} 个文件${badCount ? '，' + badCount + ' 个不可操作' : ''}</div>`;
-            const emptyHtml = files.length === 0 ? '<div class="pl-dl-empty"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg><div class="pl-dl-empty-title">请先在页面中选择文件</div></div>' : `${countLine}<div class="pl-dl-files" id="pl-dl-files">${fileRows}</div>`;
+            const countLine = files.length === 0 ? '' : `<div class="fl-dl-file-count">共 ${files.length} 个文件${badCount ? '，' + badCount + ' 个不可操作' : ''}</div>`;
+            const emptyHtml = files.length === 0 ? '<div class="fl-dl-empty"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg><div class="fl-dl-empty-title">请先在页面中选择文件</div></div>' : `${countLine}<div class="fl-dl-files" id="fl-dl-files">${fileRows}</div>`;
 
-            const html = `<div class="pl-dl-panel">
-                <div class="pl-dl-intro">${intro}</div>
-                <div class="pl-dl-warning-bar" id="pl-dl-rpc-warning">尚未配置 Aria2 / Motrix 的 RPC 参数，请先完成配置</div>
+            const html = `<div class="fl-dl-panel">
+                <div class="fl-dl-intro">${intro}</div>
+                <div class="fl-dl-warning-bar" id="fl-dl-rpc-warning">尚未配置 Aria2 / Motrix 的 RPC 参数，请先完成配置</div>
                 ${emptyHtml}
-                <div class="pl-dl-section">
-                    <div class="pl-dl-section-label">选择下载器 ${base._defaultBtnHtml()}</div>
-                    <div class="pl-dl-chips">${dlChips}</div>
+                <div class="fl-dl-section">
+                    <div class="fl-dl-section-label">选择下载器 ${base._defaultBtnHtml()}</div>
+                    <div class="fl-dl-chips">${dlChips}</div>
                 </div>
-                <div class="pl-dl-section">
-                    <div class="pl-dl-section-label" id="pl-dl-protocol-label">${base._protocolLabelText()}</div>
-                    <div class="pl-dl-chips" id="pl-dl-protocol-chips">${base._protocolChipsHtml()}</div>
+                <div class="fl-dl-section">
+                    <div class="fl-dl-section-label" id="fl-dl-protocol-label">${base._protocolLabelText()}</div>
+                    <div class="fl-dl-chips" id="fl-dl-protocol-chips">${base._protocolChipsHtml()}</div>
                 </div>
-                <div class="pl-dl-actions">
-                    <button class="pl-dl-btn pl-dl-btn-primary listener-dl-execute" disabled>请先选择下载器</button>
-                    <button class="pl-dl-btn pl-dl-btn-secondary listener-dl-copy-name">复制文件名</button>
-                    <button class="pl-dl-btn pl-dl-btn-secondary listener-dl-copy-link">复制下载链接</button>
-                    <button class="pl-dl-btn pl-dl-btn-secondary pl-dl-btn-right listener-open-setting">助手设置</button>
+                <div class="fl-dl-actions">
+                    <button class="fl-dl-btn fl-dl-btn-primary listener-dl-execute" disabled>请先选择下载器</button>
+                    <button class="fl-dl-btn fl-dl-btn-secondary listener-dl-copy-name">复制文件名</button>
+                    <button class="fl-dl-btn fl-dl-btn-secondary listener-dl-copy-link">复制下载链接</button>
+                    <button class="fl-dl-btn fl-dl-btn-secondary fl-dl-btn-right listener-open-setting">助手设置</button>
                 </div>
-                <div class="pl-dl-help">帮助：<a href="https://www.youxiaohou.com/zh-cn/motrix.html" target="_blank" rel="noreferrer noopener">RPC 配置说明</a> · <a href="https://www.youxiaohou.com/zh-cn/curl.html" target="_blank" rel="noreferrer noopener">cURL 使用教程</a> · <a href="https://github.com/Wjavan/FerryLink" target="_blank" rel="noreferrer noopener">项目主页</a></div>
+                <div class="fl-dl-help">帮助：<a href="https://www.youxiaohou.com/zh-cn/motrix.html" target="_blank" rel="noreferrer noopener">RPC 配置说明</a> · <a href="https://www.youxiaohou.com/zh-cn/curl.html" target="_blank" rel="noreferrer noopener">cURL 使用教程</a> · <a href="https://github.com/Wjavan/FerryLink" target="_blank" rel="noreferrer noopener">项目主页</a></div>
             </div>`;
 
             Swal.fire({
@@ -1313,7 +1313,7 @@
                 showCloseButton: true, showConfirmButton: false,
                 width: 860,
                 padding: '16px 24px 16px',
-                customClass: { popup: 'pl-popup' },
+                customClass: { popup: 'fl-popup' },
                 willClose: () => { base._resetData(); },
             });
             base._updateMainButton();
@@ -1324,11 +1324,11 @@
             base.panelFiles = [];
             Swal.fire({
                 title: '获取下载链接失败',
-                html: `<div class="pl-dl-panel"><div class="pl-dl-error">${base.esc(errMsg)}<br><button class="pl-dl-retry listener-dl-retry">重试</button></div></div>`,
+                html: `<div class="fl-dl-panel"><div class="fl-dl-error">${base.esc(errMsg)}<br><button class="fl-dl-retry listener-dl-retry">重试</button></div></div>`,
                 allowOutsideClick: false,
                 showCloseButton: true, showConfirmButton: false,
                 width: 860,
-                customClass: { popup: 'pl-popup' },
+                customClass: { popup: 'fl-popup' },
             });
         },
         _updateMainButton() {
@@ -1339,15 +1339,15 @@
             const protos = PROTOCOLS[downloadState.downloader];
             if (!downloadState.protocol && protos.length === 1) {
                 downloadState.protocol = protos[0].id;
-                $('.pl-dl-chip[data-type="protocol"]').removeClass('active');
-                $(`.pl-dl-chip[data-type="protocol"][data-id="${downloadState.protocol}"]`).addClass('active');
+                $('.fl-dl-chip[data-type="protocol"]').removeClass('active');
+                $(`.fl-dl-chip[data-type="protocol"][data-id="${downloadState.protocol}"]`).addClass('active');
             }
             if (!downloadState.protocol) { $btn.prop('disabled', true).text('请先选择下载协议'); return; }
             // 无转码档时回落，别把无效选择留给用户
             if (downloadState.protocol === 'transcode' && !base._hasMediaLink()) {
                 downloadState.protocol = 'http';
-                $('.pl-dl-chip[data-type="protocol"]').removeClass('active');
-                $('.pl-dl-chip[data-type="protocol"][data-id="http"]').addClass('active');
+                $('.fl-dl-chip[data-type="protocol"]').removeClass('active');
+                $('.fl-dl-chip[data-type="protocol"][data-id="http"]').addClass('active');
             }
             const proto = protos.find(p => p.id === downloadState.protocol);
             if (!proto) { $btn.prop('disabled', true).text('请先选择下载协议'); return; }
@@ -1374,14 +1374,14 @@
         _protoChip(p) {
             if (!base._protoUsable(p)) return '';
             const active = downloadState.protocol === p.id ? ' active' : '';
-            return `<div class="pl-dl-chip${active}" data-type="protocol" data-id="${p.id}" title="${base.esc(PROTO_TITLES[p.id] || '')}">${p.name}</div>`;
+            return `<div class="fl-dl-chip${active}" data-type="protocol" data-id="${p.id}" title="${base.esc(PROTO_TITLES[p.id] || '')}">${p.name}</div>`;
         },
         _protocolChipsHtml() {
             if (!downloadState.downloader) {
                 return ALL_PROTOCOLS.map(g => `
-                    <div class="pl-dl-proto-group">
-                        <div class="pl-dl-proto-group-label">${g.label}</div>
-                        <div class="pl-dl-chips">${g.items.map(p => base._protoChip(p)).join('')}</div>
+                    <div class="fl-dl-proto-group">
+                        <div class="fl-dl-proto-group-label">${g.label}</div>
+                        <div class="fl-dl-chips">${g.items.map(p => base._protoChip(p)).join('')}</div>
                     </div>`).join('');
             }
             return PROTOCOLS[downloadState.downloader].map(p => base._protoChip(p)).filter(Boolean).join('');
@@ -1394,15 +1394,15 @@
                 const url = (useMedia ? f.mediaLink : f.dlink) || '';
                 const ok = /^https?:\/\//.test(url);
                 const text = ok ? url : (f.isFolder ? '文件夹请进入后选择文件' : (missTip ? '该文件没有转码档' : (url || '该文件未返回下载链接（可能已失效或被禁止下载）')));
-                const $row = $('.pl-dl-file-row[data-index="' + i + '"]');
-                $row.toggleClass('pl-dl-gray', !!f.isFolder || !ok);
-                $row.children('.pl-dl-file-link').text(text).attr('title', text);
+                const $row = $('.fl-dl-file-row[data-index="' + i + '"]');
+                $row.toggleClass('fl-dl-gray', !!f.isFolder || !ok);
+                $row.children('.fl-dl-file-link').text(text).attr('title', text);
             });
         },
         _updateProtocolChips() {
-            const $c = $('#pl-dl-protocol-chips');
+            const $c = $('#fl-dl-protocol-chips');
             if (!$c.length) return;
-            $('#pl-dl-protocol-label').text(base._protocolLabelText());
+            $('#fl-dl-protocol-label').text(base._protocolLabelText());
             $c.html(base._protocolChipsHtml());
             base._paintLinkCells();
             base._syncDefaultBtn();
@@ -1451,7 +1451,7 @@
             let ok = 0, fail = 0;
             for (let i = 0; i < files.length; i++) {
                 const f = files[i];
-                const $st = $('.pl-dl-file-status[data-status-index="' + f._idx + '"]');
+                const $st = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
                 if (base._isBigBaiduLink(f)) {
                     const bar = base._paintBar($st, '下载中');
                     bar.paint(0);
@@ -1487,7 +1487,7 @@
         },
         // 进度画在「链接」格上：两个下载路径共用，别各写一份
         _paintBar($st, label) {
-            const $bar = $st.siblings('.pl-dl-file-link');
+            const $bar = $st.siblings('.fl-dl-file-link');
             const linkText = $bar.text();
             const dark = $(document.body).hasClass('fl-dark');
             const track = dark ? '#3f4041' : '#eef0f2';
@@ -1638,20 +1638,20 @@
                 let ok = 0, fail = 0;
                 for (let f of files) {
                     const r = await base.sendLinkToIDM(f.dlink, f.filename, f.rawSize || 0, base._cdnHeaders(f.dlink));
-                    if (r === 'success') { ok++; $('.pl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_OK); }
-                    else { fail++; $('.pl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_NO); }
+                    if (r === 'success') { ok++; $('.fl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_OK); }
+                    else { fail++; $('.fl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_NO); }
                 }
                 $btn.text('推送完成：成功 ' + ok + '，失败 ' + fail);
                 if (fail > 0) base.panelNotice('部分文件推送失败：IDM 未响应', 'error'); else if (ok > 0) base.panelNotice('已推送至 IDM', 'success');
                 setTimeout(() => base._updateMainButton(), 4000);
             } else if (pid === 'rpc') {
                 const d = base.getValue('setting_rpc_domain'), p = base.getValue('setting_rpc_port'), pa = base.getValue('setting_rpc_path');
-                if (!d || !p || !pa) { $('#pl-dl-rpc-warning').show(); base.showRPCSetting(false); return; }
-                $('#pl-dl-rpc-warning').hide();
+                if (!d || !p || !pa) { $('#fl-dl-rpc-warning').show(); base.showRPCSetting(false); return; }
+                $('#fl-dl-rpc-warning').hide();
                 $btn.text('正在推送 ' + files.length + ' 个任务至 RPC…').prop('disabled', true);
                 let ok = 0, fail = 0;
                 for (let f of files) {
-                    const $cell = $('.pl-dl-file-status[data-status-index="' + f._idx + '"]');
+                    const $cell = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
                     base._lastNotice = '';   // 清掉上一条，免得把别人的提示当成本次失败原因
                     const r = await adapter.sendLinkToRPC(f.filename, f.dlink);
                     if (r === 'success') { ok++; $cell.html(MARK_OK); }
@@ -1671,7 +1671,7 @@
                 $btn.text('正在推送 ' + files.length + ' 个任务至 BitComet…').prop('disabled', true);
                 let ok = 0, fail = 0;
                 for (let f of files) {
-                    const $cell = $('.pl-dl-file-status[data-status-index="' + f._idx + '"]');
+                    const $cell = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
                     base._lastNotice = '';
                     const r = await base.sendLinkToBitcomet(f.filename, f.dlink, base._cdnHeaders(f.dlink));
                     if (r === 'success') { ok++; $cell.html(MARK_OK); }
@@ -1684,7 +1684,7 @@
         },
         _markFailWithReason($cell, why) {
             const text = why || '推送失败（未返回原因）';
-            $cell.siblings('.pl-dl-file-link').text(text).attr('title', text);
+            $cell.siblings('.fl-dl-file-link').text(text).attr('title', text);
         },
         _launchBC(files) {
             const $btn = $('.listener-dl-execute');
@@ -1697,7 +1697,7 @@
                 try { b = adapter.convertLinkToBC(f.dlink, f.filename, panInfo.ua || navigator.userAgent); } catch (e) { b = ''; }
                 if (typeof b === 'object') b = b.link || '';
                 const url = decodeURIComponent(b || '');
-                const $cell = $('.pl-dl-file-status[data-status-index="' + idx + '"]');
+                const $cell = $('.fl-dl-file-status[data-status-index="' + idx + '"]');
                 if (!/^bc:\/\//i.test(url)) { fail++; $cell.html(MARK_NO); return; }
                 setTimeout(() => {
                     const a = document.createElement('a');
@@ -1738,7 +1738,7 @@
                     cmd = f.dlink;   // XDown 等：复制原始直链
                 }
                 parts.push(cmd);
-                $('.pl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_OK);
+                $('.fl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_OK);
             }
             base.setClipboard(parts.join('\n'));
             $btn.text('复制完成：成功 ' + parts.length + '，失败 0');
@@ -1911,7 +1911,7 @@
                     if (ok) return;   // 挂上了就收工
                 }
                 setTimeout(checkElement, checkInterval);
-                if (!warned && !document.querySelector('.pl-button') && Date.now() - startAt > warnAfter) {
+                if (!warned && !document.querySelector('.fl-button') && Date.now() - startAt > warnAfter) {
                     warned = true;
                     console.warn('[FerryLink] 挂载点未出现：' + element + '（15 秒内一直没找到，页面结构可能已改）');
                 }
@@ -1923,72 +1923,72 @@
             if (typeof MutationObserver !== 'function' || !document.body) return;
             let last = 0;
             new MutationObserver(() => {
-                if ($('.pl-button').length) return;
+                if ($('.fl-button').length) return;
                 let now = Date.now();
                 if (now - last < 50) return;   // 连试失败时节流，别把主线程拖住
                 last = now;
                 // 等框架这一轮画完再插，晚一帧总好过被覆盖后闪一下
-                requestAnimationFrame(() => { if (!$('.pl-button').length) callback(); });
+                requestAnimationFrame(() => { if (!$('.fl-button').length) callback(); });
             }).observe(document.body, { childList: true, subtree: true });
         },
-        addPanLinkerStyle() {
+        addFerryLinkStyle() {
             color = base.getValue('setting_theme_color');
             const darkRules = `
-            .ferrylink-swal-popup, .pl-popup { background: #1d1e1f !important; color: #d8d9da; }
+            .ferrylink-swal-popup, .fl-popup { background: #1d1e1f !important; color: #d8d9da; }
             .swal2-title { color: #e8eaed; }
             .swal2-html-container { color: #d8d9da; }
             .swal2-close { color: #8b8e93; }
             .swal2-close:hover { color: #d8d9da; }
             .swal2-confirm { background-color: ${color} !important; }
             .swal2-cancel { background-color: #3a3b3d !important; color: #d8d9da !important; }
-            .pl-setting-row { border-bottom-color: #343536; }
-            .pl-setting-row-name { color: #e8eaed; }
-            .pl-setting-row-sub, .pl-setting-tip-text, .pl-setting-help { color: #8b8e93; }
-            .pl-setting-row-click:hover { background: #2a2b2c; }
-            .pl-setting-row-click::after { color: #8b8e93; }
-            .pl-setting-row-click:hover::after { color: ${color}; }
-            .pl-label { color: #e8eaed; }
-            .pl-input { background: #2a2b2c; border-color: #3f4041; color: #e8eaed; }
-            .pl-input::placeholder { color: #6b6e73; }
-            .pl-color-box { border-color: #3f4041; }
-            .pl-color-box.checked { border-color: #e8eaed !important; }
-            .pl-dl-panel { color: #d8d9da; }
-            .pl-dl-intro, .pl-dl-help, .pl-dl-file-count, .pl-dl-section-label, .pl-dl-proto-group-label { color: #8b8e93; }
-            .pl-dl-files { border-top-color: #343536; border-bottom-color: #343536; }
-            .pl-dl-section { border-top-color: #343536; }
-            .pl-dl-file-row:hover { background: #2a2b2c; }
-            .pl-dl-file-name { color: #e8eaed; }
-            .pl-dl-file-size { color: #8b8e93; }
-            .pl-dl-file-link { color: #a8abb0; }
-            .pl-mark.ok { color: #9ccc65; }
-            .pl-mark.no { color: #e06c75; }
-            .pl-dl-gray .pl-dl-file-link { color: #e06c75; }
+            .fl-setting-row { border-bottom-color: #343536; }
+            .fl-setting-row-name { color: #e8eaed; }
+            .fl-setting-row-sub, .fl-setting-tip-text, .fl-setting-help { color: #8b8e93; }
+            .fl-setting-row-click:hover { background: #2a2b2c; }
+            .fl-setting-row-click::after { color: #8b8e93; }
+            .fl-setting-row-click:hover::after { color: ${color}; }
+            .fl-label { color: #e8eaed; }
+            .fl-input { background: #2a2b2c; border-color: #3f4041; color: #e8eaed; }
+            .fl-input::placeholder { color: #6b6e73; }
+            .fl-color-box { border-color: #3f4041; }
+            .fl-color-box.checked { border-color: #e8eaed !important; }
+            .fl-dl-panel { color: #d8d9da; }
+            .fl-dl-intro, .fl-dl-help, .fl-dl-file-count, .fl-dl-section-label, .fl-dl-proto-group-label { color: #8b8e93; }
+            .fl-dl-files { border-top-color: #343536; border-bottom-color: #343536; }
+            .fl-dl-section { border-top-color: #343536; }
+            .fl-dl-file-row:hover { background: #2a2b2c; }
+            .fl-dl-file-name { color: #e8eaed; }
+            .fl-dl-file-size { color: #8b8e93; }
+            .fl-dl-file-link { color: #a8abb0; }
+            .fl-mark.ok { color: #9ccc65; }
+            .fl-mark.no { color: #e06c75; }
+            .fl-dl-gray .fl-dl-file-link { color: #e06c75; }
             /* 深色下滚动条提亮，否则跟深色背景同色看不见 */
             body.fl-dark ::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,.22); }
             body.fl-dark ::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,.3); }
-            .pl-dl-chip { background: #2a2b2c; border-color: #3f4041; color: #c9cacc; }
-            .pl-dl-chip.active { background: ${color}; border-color: ${color}; color: #fff; }
-            .pl-dl-default-btn { background: #2a2b2c; border-color: #3f4041; color: #c9cacc; }
-            .pl-dl-default-btn:focus-visible { box-shadow: 0 0 0 2px #1d1e1f, 0 0 0 4px currentColor; }
-            .pl-dl-default-btn:hover { background: #343536; border-color: ${color}; color: ${color}; }
-            .pl-dl-default-btn.is-set { background: #1b2c35; border-color: #26617f; color: ${color}; }
-            .pl-dl-default-btn.is-set .pl-dl-default-tag, .pl-dl-default-btn.is-set .pl-dl-default-name { color: #d8d9da; }
-            .pl-dl-default-btn.is-set .pl-dl-default-x { color: #8b8e93; }
-            .pl-dl-default-btn.is-set:hover { background: #3f2226; border-color: #5a2f33; }
-            .pl-dl-default-btn.is-set:hover .pl-dl-default-tag, .pl-dl-default-btn.is-set:hover .pl-dl-default-name, .pl-dl-default-btn.is-set:hover .pl-dl-default-x { color: #e06c75; }
-            .pl-dl-actions { border-top-color: #343536; }
-            .pl-dl-btn-secondary { background: #2a2b2c; color: #c9cacc; border-color: #3f4041; }
-            .pl-dl-btn-secondary:hover { background: #343536; }
-            .pl-dl-btn-primary:disabled { background: #2a2b2c; color: #5b5e63; }
-            .pl-dl-warning-bar { background: #3f2226; color: #e06c75; }
-            .pl-dl-toast { background: #2a2b2c; color: #e8eaed; border-color: #3f4041; }
-            .pl-dl-toast-success { border-color: #67c23a; color: #95d475; }
-            .pl-dl-toast-error { border-color: #f56c6c; color: #f89898; }
-            .pl-dl-empty { color: #8b8e93; }
-            .pl-dl-empty svg { color: #5e6165; }
-            .pl-dl-error { color: #e06c75; }
-            .pl-dl-retry { background: #2a2b2c; border-color: ${color}; color: ${color}; }
-            .pl-dl-retry:hover { background: ${color}22; }
+            .fl-dl-chip { background: #2a2b2c; border-color: #3f4041; color: #c9cacc; }
+            .fl-dl-chip.active { background: ${color}; border-color: ${color}; color: #fff; }
+            .fl-dl-default-btn { background: #2a2b2c; border-color: #3f4041; color: #c9cacc; }
+            .fl-dl-default-btn:focus-visible { box-shadow: 0 0 0 2px #1d1e1f, 0 0 0 4px currentColor; }
+            .fl-dl-default-btn:hover { background: #343536; border-color: ${color}; color: ${color}; }
+            .fl-dl-default-btn.is-set { background: #1b2c35; border-color: #26617f; color: ${color}; }
+            .fl-dl-default-btn.is-set .fl-dl-default-tag, .fl-dl-default-btn.is-set .fl-dl-default-name { color: #d8d9da; }
+            .fl-dl-default-btn.is-set .fl-dl-default-x { color: #8b8e93; }
+            .fl-dl-default-btn.is-set:hover { background: #3f2226; border-color: #5a2f33; }
+            .fl-dl-default-btn.is-set:hover .fl-dl-default-tag, .fl-dl-default-btn.is-set:hover .fl-dl-default-name, .fl-dl-default-btn.is-set:hover .fl-dl-default-x { color: #e06c75; }
+            .fl-dl-actions { border-top-color: #343536; }
+            .fl-dl-btn-secondary { background: #2a2b2c; color: #c9cacc; border-color: #3f4041; }
+            .fl-dl-btn-secondary:hover { background: #343536; }
+            .fl-dl-btn-primary:disabled { background: #2a2b2c; color: #5b5e63; }
+            .fl-dl-warning-bar { background: #3f2226; color: #e06c75; }
+            .fl-dl-toast { background: #2a2b2c; color: #e8eaed; border-color: #3f4041; }
+            .fl-dl-toast-success { border-color: #67c23a; color: #95d475; }
+            .fl-dl-toast-error { border-color: #f56c6c; color: #f89898; }
+            .fl-dl-empty { color: #8b8e93; }
+            .fl-dl-empty svg { color: #5e6165; }
+            .fl-dl-error { color: #e06c75; }
+            .fl-dl-retry { background: #2a2b2c; border-color: ${color}; color: ${color}; }
+            .fl-dl-retry:hover { background: ${color}22; }
             .swal2-popup, .swal2-title, .swal2-html-container { color: #e8eaed; }
             `;
             // 组合选择器每项都带前缀，否则只第一个生效
@@ -2002,8 +2002,8 @@
             ::-webkit-scrollbar-thumb:hover { background-color: rgba(85,85,85,.75) }
             /* 面板外的弹窗用 16px 基准，面板本体 12px */
             .swal2-popup { font-size: 16px !important; }
-            .pl-popup { font-size: 12.5px !important; border-radius: 6px !important; box-shadow: 0 1px 2px rgb(28 28 32 / 4%), 0 6px 16px rgb(28 28 32 / 8%) !important; }
-            .pl-popup a { color: ${color} !important; }
+            .fl-popup { font-size: 12.5px !important; border-radius: 6px !important; box-shadow: 0 1px 2px rgb(28 28 32 / 4%), 0 6px 16px rgb(28 28 32 / 8%) !important; }
+            .fl-popup a { color: ${color} !important; }
             .tag-danger { color: #cc3235; margin: 0 5px; }
             .ali-button { display: inline-flex; align-items: center; justify-content: center; border: 0 solid transparent; border-radius: 5px; white-space: nowrap; flex-shrink: 0; font-size: 14px; line-height: 1.5; outline: 0; touch-action: manipulation; transition: background .3s ease; color: #fff; background: #637dff; margin-left: 20px; padding: 0 12px; position: relative; cursor: pointer; height: 32px; min-height: 32px; }
             .ali-button:hover { background: #7a90ff; }
@@ -2036,33 +2036,33 @@
             .ctfile-button-peer svg { width: 18px; height: 18px; }
             .pointer { cursor: pointer; }
             /* 设置页：菜单式主设置页行样式 */
-            .pl-setting-list { text-align: left; }
-            .pl-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 8px; margin: 0 -8px; border-bottom: 1px solid #e6e8eb; }
-            .pl-setting-row:last-child { border-bottom: 0; }
-            .pl-setting-row-main { flex: 1; min-width: 0; }
-            .pl-setting-row-name { font-size: 14px; color: #303133; }
-            .pl-setting-row-sub { font-size: 11px; color: #6b7078; margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-            .pl-setting-row-click { cursor: pointer; border-radius: 6px; }
-            .pl-setting-row-click::after { content: '›'; font-size: 20px; line-height: 1; color: #6b7078; transition: color 150ms; }
-            .pl-setting-row-click:hover { background: #f5f6f7; }
-            .pl-setting-row-click:hover .pl-setting-row-name { color: ${color}; }
-            .pl-setting-row-click:hover::after { color: ${color}; }
-            .pl-setting-tip-text { font-size: 11px; color: #6b7078; line-height: 1.7; margin-top: 10px; text-align: left; }
-            .pl-setting-help { font-size: 12px; color: #6b7078; margin-top: 8px; text-align: center; }
-            /* 同 .pl-dl-help a：设置页这行也是文字加链接混排，一样要挡宿主样式 */
-            .pl-setting-help a { color: ${color}; text-decoration: none; font: inherit; vertical-align: baseline; }
-            .pl-setting-help a:hover { text-decoration: underline; }
-            .pl-setting-label { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; }
-            .pl-label { flex: 0 0 100px; text-align: left; }
-            .pl-input { flex: 1; padding: 8px 10px; border: 1px solid #e6e8eb; border-radius: 6px; font-size: 14px; background: #fff; color: #303133; transition: border-color 180ms ease; }
-            .pl-input:focus { outline: none; border-color: ${color}; }
-            .pl-setting-select { flex: 0 0 180px; min-height: 36px; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23909399' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
-            .pl-setting-select:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
-            .pl-color { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; }
-            .pl-color-box { width: 30px; height: 30px; box-sizing: border-box; border: 1px solid #e6e8eb; border-radius: 6px; cursor: pointer; transition: border-color 150ms; }
-            .pl-color-box:hover { border-color: ${color}; }
-            .pl-color-box.checked { border: 3px dashed #303133 !important }
-            .pl-color-box:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
+            .fl-setting-list { text-align: left; }
+            .fl-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 8px; margin: 0 -8px; border-bottom: 1px solid #e6e8eb; }
+            .fl-setting-row:last-child { border-bottom: 0; }
+            .fl-setting-row-main { flex: 1; min-width: 0; }
+            .fl-setting-row-name { font-size: 14px; color: #303133; }
+            .fl-setting-row-sub { font-size: 11px; color: #6b7078; margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+            .fl-setting-row-click { cursor: pointer; border-radius: 6px; }
+            .fl-setting-row-click::after { content: '›'; font-size: 20px; line-height: 1; color: #6b7078; transition: color 150ms; }
+            .fl-setting-row-click:hover { background: #f5f6f7; }
+            .fl-setting-row-click:hover .fl-setting-row-name { color: ${color}; }
+            .fl-setting-row-click:hover::after { color: ${color}; }
+            .fl-setting-tip-text { font-size: 11px; color: #6b7078; line-height: 1.7; margin-top: 10px; text-align: left; }
+            .fl-setting-help { font-size: 12px; color: #6b7078; margin-top: 8px; text-align: center; }
+            /* 同 .fl-dl-help a：设置页这行也是文字加链接混排，一样要挡宿主样式 */
+            .fl-setting-help a { color: ${color}; text-decoration: none; font: inherit; vertical-align: baseline; }
+            .fl-setting-help a:hover { text-decoration: underline; }
+            .fl-setting-label { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; }
+            .fl-label { flex: 0 0 100px; text-align: left; }
+            .fl-input { flex: 1; padding: 8px 10px; border: 1px solid #e6e8eb; border-radius: 6px; font-size: 14px; background: #fff; color: #303133; transition: border-color 180ms ease; }
+            .fl-input:focus { outline: none; border-color: ${color}; }
+            .fl-setting-select { flex: 0 0 180px; min-height: 36px; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23909399' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+            .fl-setting-select:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
+            .fl-color { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; }
+            .fl-color-box { width: 30px; height: 30px; box-sizing: border-box; border: 1px solid #e6e8eb; border-radius: 6px; cursor: pointer; transition: border-color 150ms; }
+            .fl-color-box:hover { border-color: ${color}; }
+            .fl-color-box.checked { border: 3px dashed #303133 !important }
+            .fl-color-box:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
             /* swal2 关闭按钮焦点轮廓：Tab 导航或弹窗打开时自动聚焦都会触发 */
             .swal2-close:focus, .swal2-close:focus-visible { outline: 0 !important; box-shadow: none !important; }
             .swal2-container { z-index: 200000 !important; }
@@ -2070,81 +2070,81 @@
             .ferrylink-swal-popup { z-index: 2147483647 !important; }
             body.swal2-height-auto { height: inherit !important; }
                         .btn-operate .btn-main { display:flex; align-items:center; }
-            /* ---- L3 UI 层：下载面板样式 pl-dl-* ---- */
-            .pl-dl-panel { width: 100%; font-size: 13.5px; }
-            .pl-dl-intro { font-size: 13.5px; color: #606266; line-height: 1.7; margin-bottom: 12px; }
-            .pl-dl-intro a { color: ${color}; }
-            .pl-dl-help { font-size: 12.5px; color: #6b7078; margin-top: 10px; }
+            /* ---- L3 UI 层：下载面板样式 fl-dl-* ---- */
+            .fl-dl-panel { width: 100%; font-size: 13.5px; }
+            .fl-dl-intro { font-size: 13.5px; color: #606266; line-height: 1.7; margin-bottom: 12px; }
+            .fl-dl-intro a { color: ${color}; }
+            .fl-dl-help { font-size: 12.5px; color: #6b7078; margin-top: 10px; }
             /* 宿主页会重置裸链接的字号字体，让「帮助：」偏高，这里用 font: inherit 对齐 */
-            .pl-dl-help a { color: ${color}; text-decoration: none; font: inherit; vertical-align: baseline; }
-            .pl-dl-help a:hover { text-decoration: underline; }
-            .pl-dl-btn:focus-visible, .pl-dl-chip:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
-            .pl-dl-files { max-height: 320px; overflow-y: auto; margin: 0 -10px; padding: 0 10px; border-top: 1px solid #e6e8eb; border-bottom: 1px solid #e6e8eb; }
-            .pl-dl-file-count { font-size: 12.5px; color: #6b7078; margin-bottom: 6px; font-weight: 600; }
+            .fl-dl-help a { color: ${color}; text-decoration: none; font: inherit; vertical-align: baseline; }
+            .fl-dl-help a:hover { text-decoration: underline; }
+            .fl-dl-btn:focus-visible, .fl-dl-chip:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
+            .fl-dl-files { max-height: 320px; overflow-y: auto; margin: 0 -10px; padding: 0 10px; border-top: 1px solid #e6e8eb; border-bottom: 1px solid #e6e8eb; }
+            .fl-dl-file-count { font-size: 12.5px; color: #6b7078; margin-bottom: 6px; font-weight: 600; }
             /* 左右各外扩 10px 再由 padding 抵消，让 hover 底色与列表上下通栏边线同宽同齐 */
-            .pl-dl-file-row { display: flex; align-items: center; gap: 10px; margin: 0 -10px; padding: 8px 20px; transition: background 180ms; }
-            .pl-dl-file-row:hover { background: #f2f4f7; }
-            .pl-dl-file-name { flex: 0 0 200px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 500; color: #111; }
-            .pl-dl-file-size { flex: 0 0 70px; font-size: 12.5px; color: #6b7078; text-align: right; }
-            .pl-dl-file-link { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; color: #787774; }
-            .pl-dl-file-status { flex: 0 0 auto; font-size: 13px; min-width: 22px; text-align: center; }
-            .pl-mark { font-size: 16px; font-weight: 700; line-height: 1; }
-            .pl-mark.ok { color: #518c17; }
-            .pl-mark.no { color: #cc3235; }
+            .fl-dl-file-row { display: flex; align-items: center; gap: 10px; margin: 0 -10px; padding: 8px 20px; transition: background 180ms; }
+            .fl-dl-file-row:hover { background: #f2f4f7; }
+            .fl-dl-file-name { flex: 0 0 200px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 500; color: #111; }
+            .fl-dl-file-size { flex: 0 0 70px; font-size: 12.5px; color: #6b7078; text-align: right; }
+            .fl-dl-file-link { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; color: #787774; }
+            .fl-dl-file-status { flex: 0 0 auto; font-size: 13px; min-width: 22px; text-align: center; }
+            .fl-mark { font-size: 16px; font-weight: 700; line-height: 1; }
+            .fl-mark.ok { color: #518c17; }
+            .fl-mark.no { color: #cc3235; }
             /* 灰行只压名字、大小、状态，原因那格保持清楚，用户要读的就是它 */
-            .pl-dl-gray .pl-dl-file-name, .pl-dl-gray .pl-dl-file-size, .pl-dl-gray .pl-dl-file-status { opacity: 0.45; }
-            .pl-dl-gray .pl-dl-file-link { color: #cc3235; }
-            .pl-dl-section { margin: 0 -10px; padding: 14px 10px; border-top: 1px solid #e6e8eb; }
-            .pl-dl-section-label { font-size: 12.5px; color: #6b7078; margin-bottom: 8px; font-weight: 600; }
-            .pl-dl-default-btn { display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; height: 22px; padding: 0 9px; border: 1px solid #d4d8de; border-radius: 999px; background: #fff; color: #606266; font-size: 12px; font-weight: 400; line-height: 1; font-family: inherit; cursor: pointer; vertical-align: middle; transition: background-color 180ms, border-color 180ms, color 180ms; }
-            .pl-dl-default-btn svg { flex: 0 0 auto; }
-            .pl-dl-default-btn:hover { border-color: #b9dff2; background: #f4fbff; color: #0a7bb8; }
-            .pl-dl-default-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
-            .pl-dl-default-btn.is-set { border-color: #bfe9ff; background: #eef9ff; color: #0a7bb8; }
-            .pl-dl-default-btn.is-set .pl-dl-default-tag { color: #303133; font-weight: 600; }
-            .pl-dl-default-btn.is-set .pl-dl-default-name { max-width: 168px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #303133; }
-            .pl-dl-default-btn.is-set .pl-dl-default-x { color: #8b8e93; }
-            .pl-dl-default-btn.is-set:hover { border-color: #f2b7b9; background: #fef0f0; color: #cc3235; }
-            .pl-dl-default-btn.is-set:hover .pl-dl-default-tag, .pl-dl-default-btn.is-set:hover .pl-dl-default-name { color: #cc3235; }
-            .pl-dl-default-btn.is-set:hover .pl-dl-default-x { color: #cc3235; }
-            #pl-dl-protocol-chips { row-gap: 4px; }
-            .pl-dl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-            .pl-dl-chip { display: inline-flex; align-items: center; padding: 8px 18px; border-radius: 999px; font-size: 13.5px; border: 1px solid #d4d8de; background: #fafbfc; color: #606266; cursor: pointer; transition: background-color 180ms, border-color 180ms, color 180ms; white-space: nowrap; }
-            .pl-dl-chip:hover { border-color: ${color}; color: ${color}; }
-            .pl-dl-chip.active { background: ${color}; border-color: ${color}; color: #fff; }
-            .pl-dl-chip.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
-            .pl-dl-proto-group { width: 100%; }
-            .pl-dl-proto-group-label { font-size: 12px; color: #6b7078; margin: 4px 0; }
-            .pl-dl-actions { display: flex; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid #e6e8eb; }
-            .pl-dl-btn { padding: 8px 22px; border-radius: 8px; font-size: 13.5px; border: 0; cursor: pointer; transition: background-color 180ms, border-color 180ms, color 180ms; white-space: nowrap; min-height: 38px; }
-            .pl-dl-btn-primary { background: ${color}; color: #fff; font-size: 14.5px; font-weight: 500; min-width: 150px; }
-            .pl-dl-btn-primary:hover { opacity: 0.9; }
-            .pl-dl-btn-primary:disabled { background: #f5f6f7; color: #c0c4cc; cursor: not-allowed; font-weight: 400; }
-            .pl-dl-btn-secondary { background: #fff; color: #606266; border: 1px solid #d4d8de; }
-            .pl-dl-btn-right { margin-left: auto; }
-            .pl-dl-btn-secondary:hover { background: #f5f6f7; }
-            .pl-dl-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
-            .pl-dl-error { padding: 16px; text-align: center; color: #cc3235; }
-            .pl-dl-warning-bar { background: #fef0f0; color: #cc3235; padding: 6px 12px; border-radius: 6px; font-size: 12px; margin: 8px 0; display: none; }
-            .pl-dl-toast { position: fixed; top: 10vh; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; background: #fff; color: #303133; border: 1px solid #e6e8eb; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 500; box-shadow: 0 4px 16px rgb(28 28 32 / 18%), 0 1px 3px rgb(28 28 32 / 12%); max-width: 80vw; }
-            .pl-dl-toast span { word-break: break-all; }
-            .pl-dl-toast-success { border-color: #67c23a; color: #2f7a17; }
-            .pl-dl-toast-error { border-color: #f56c6c; color: #c03639; }
-            .pl-dl-empty { padding: 14px 28px; text-align: center; color: #6b7078; font-size: 14.5px; }
-            .pl-dl-empty svg { display: block; margin: 0 auto 10px; color: #c3c8cf; }
-            .pl-dl-empty-title { font-size: 15.5px; }
-            .pl-dl-retry { margin-top: 10px; padding: 8px 22px; min-height: 38px; border-radius: 8px; border: 1px solid ${color}; color: ${color}; background: #fff; cursor: pointer; font-size: 13px; }
-            .pl-dl-retry:hover { background: ${color}11; }
+            .fl-dl-gray .fl-dl-file-name, .fl-dl-gray .fl-dl-file-size, .fl-dl-gray .fl-dl-file-status { opacity: 0.45; }
+            .fl-dl-gray .fl-dl-file-link { color: #cc3235; }
+            .fl-dl-section { margin: 0 -10px; padding: 14px 10px; border-top: 1px solid #e6e8eb; }
+            .fl-dl-section-label { font-size: 12.5px; color: #6b7078; margin-bottom: 8px; font-weight: 600; }
+            .fl-dl-default-btn { display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; height: 22px; padding: 0 9px; border: 1px solid #d4d8de; border-radius: 999px; background: #fff; color: #606266; font-size: 12px; font-weight: 400; line-height: 1; font-family: inherit; cursor: pointer; vertical-align: middle; transition: background-color 180ms, border-color 180ms, color 180ms; }
+            .fl-dl-default-btn svg { flex: 0 0 auto; }
+            .fl-dl-default-btn:hover { border-color: #b9dff2; background: #f4fbff; color: #0a7bb8; }
+            .fl-dl-default-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
+            .fl-dl-default-btn.is-set { border-color: #bfe9ff; background: #eef9ff; color: #0a7bb8; }
+            .fl-dl-default-btn.is-set .fl-dl-default-tag { color: #303133; font-weight: 600; }
+            .fl-dl-default-btn.is-set .fl-dl-default-name { max-width: 168px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #303133; }
+            .fl-dl-default-btn.is-set .fl-dl-default-x { color: #8b8e93; }
+            .fl-dl-default-btn.is-set:hover { border-color: #f2b7b9; background: #fef0f0; color: #cc3235; }
+            .fl-dl-default-btn.is-set:hover .fl-dl-default-tag, .fl-dl-default-btn.is-set:hover .fl-dl-default-name { color: #cc3235; }
+            .fl-dl-default-btn.is-set:hover .fl-dl-default-x { color: #cc3235; }
+            #fl-dl-protocol-chips { row-gap: 4px; }
+            .fl-dl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+            .fl-dl-chip { display: inline-flex; align-items: center; padding: 8px 18px; border-radius: 999px; font-size: 13.5px; border: 1px solid #d4d8de; background: #fafbfc; color: #606266; cursor: pointer; transition: background-color 180ms, border-color 180ms, color 180ms; white-space: nowrap; }
+            .fl-dl-chip:hover { border-color: ${color}; color: ${color}; }
+            .fl-dl-chip.active { background: ${color}; border-color: ${color}; color: #fff; }
+            .fl-dl-chip.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+            .fl-dl-proto-group { width: 100%; }
+            .fl-dl-proto-group-label { font-size: 12px; color: #6b7078; margin: 4px 0; }
+            .fl-dl-actions { display: flex; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid #e6e8eb; }
+            .fl-dl-btn { padding: 8px 22px; border-radius: 8px; font-size: 13.5px; border: 0; cursor: pointer; transition: background-color 180ms, border-color 180ms, color 180ms; white-space: nowrap; min-height: 38px; }
+            .fl-dl-btn-primary { background: ${color}; color: #fff; font-size: 14.5px; font-weight: 500; min-width: 150px; }
+            .fl-dl-btn-primary:hover { opacity: 0.9; }
+            .fl-dl-btn-primary:disabled { background: #f5f6f7; color: #c0c4cc; cursor: not-allowed; font-weight: 400; }
+            .fl-dl-btn-secondary { background: #fff; color: #606266; border: 1px solid #d4d8de; }
+            .fl-dl-btn-right { margin-left: auto; }
+            .fl-dl-btn-secondary:hover { background: #f5f6f7; }
+            .fl-dl-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+            .fl-dl-error { padding: 16px; text-align: center; color: #cc3235; }
+            .fl-dl-warning-bar { background: #fef0f0; color: #cc3235; padding: 6px 12px; border-radius: 6px; font-size: 12px; margin: 8px 0; display: none; }
+            .fl-dl-toast { position: fixed; top: 10vh; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; background: #fff; color: #303133; border: 1px solid #e6e8eb; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 500; box-shadow: 0 4px 16px rgb(28 28 32 / 18%), 0 1px 3px rgb(28 28 32 / 12%); max-width: 80vw; }
+            .fl-dl-toast span { word-break: break-all; }
+            .fl-dl-toast-success { border-color: #67c23a; color: #2f7a17; }
+            .fl-dl-toast-error { border-color: #f56c6c; color: #c03639; }
+            .fl-dl-empty { padding: 14px 28px; text-align: center; color: #6b7078; font-size: 14.5px; }
+            .fl-dl-empty svg { display: block; margin: 0 auto 10px; color: #c3c8cf; }
+            .fl-dl-empty-title { font-size: 15.5px; }
+            .fl-dl-retry { margin-top: 10px; padding: 8px 22px; min-height: 38px; border-radius: 8px; border: 1px solid ${color}; color: ${color}; background: #fff; cursor: pointer; font-size: 13px; }
+            .fl-dl-retry:hover { background: ${color}11; }
             /* 弹窗入场：drop（平滑掉落） */
             @keyframes ferrylinkDrop {
                 0%   { transform: translateY(-30px); opacity: 0; }
                 100% { transform: translateY(0);    opacity: 1; }
             }
             .swal2-popup:not(.swal2-hide) { animation: ferrylinkDrop 0.42s cubic-bezier(.22,.61,.36,1) both; }
-            .pl-popup-flip:not(.swal2-hide) { animation: ferrylinkFlip 0.45s cubic-bezier(.22,.61,.36,1) both; transform-origin: center; }
+            .fl-popup-flip:not(.swal2-hide) { animation: ferrylinkFlip 0.45s cubic-bezier(.22,.61,.36,1) both; transform-origin: center; }
             /* 系统开启减少动态效果时不播入场动画 */
             @media (prefers-reduced-motion: reduce) {
-                .swal2-popup:not(.swal2-hide), .pl-popup-flip:not(.swal2-hide) { animation: none; }
+                .swal2-popup:not(.swal2-hide), .fl-popup-flip:not(.swal2-hide) { animation: none; }
             }
             ::selection { background: ${color}33; color: inherit; }
             @keyframes ferrylinkFlip {
@@ -2152,10 +2152,10 @@
                 100% { transform: perspective(800px) rotateY(0); opacity: 1; }
             }
             ${darkScoped}
-            .pl-setting-actions { display: flex; align-items: center; justify-content: center; gap: 80px; padding-top: 14px; }
-            .pl-setting-theme-btn { flex: 0 0 auto; min-height: 32px; padding: 4px 16px; cursor: pointer; }
+            .fl-setting-actions { display: flex; align-items: center; justify-content: center; gap: 80px; padding-top: 14px; }
+            .fl-setting-theme-btn { flex: 0 0 auto; min-height: 32px; padding: 4px 16px; cursor: pointer; }
             `;
-            this.addStyle('panlinker-style', 'style', css);
+            this.addStyle('ferrylink-style', 'style', css);
             this.applyThemeMode();
         },
         applyThemeMode() {
@@ -2282,24 +2282,24 @@
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}" -A "${ua}"${cookie}`);
         },
         addPageListener() {
-            doc.on('click', '.pl-button', async (e) => {
+            doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
                 // 不走 didOpen 调 showLoading：它包在 setTimeout 里，面板已在 DOM
-                Swal.fire({ title: '获取下载链接', html: '<div class="pl-fetch-progress">正在获取…</div>', allowOutsideClick: false, showConfirmButton: false });
+                Swal.fire({ title: '获取下载链接', html: '<div class="fl-fetch-progress">正在获取…</div>', allowOutsideClick: false, showConfirmButton: false });
                 Swal.showLoading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
         },
         addButton() {
             if (!pageNum) return;
-            let $button = $(`<div class="pl-button" style="position: relative; display: inline-block; margin-right: 8px;"><div style="color:#fff;background: ${color};border-color:${color}" class="g-button g-button-blue"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></div>`);
+            let $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><div style="color:#fff;background: ${color};border-color:${color}" class="g-button g-button-blue"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></div>`);
             if (pageNum === 'main') {
-                $button = $(`<div class="pl-button" style="position: relative; display: inline-block; margin-right: 8px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; padding: 8px 16px; border: none;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
+                $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; padding: 8px 16px; border: none;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
             }
             const sel = pageNum === 'home' ? panInfo.btn.home : panInfo.btn.main;
             const tryInject = () => {
                 let $toolWrap = $(sel);
-                if (!$toolWrap.length || $('.pl-button').length) return false;
+                if (!$toolWrap.length || $('.fl-button').length) return false;
                 $toolWrap.prepend($button);
                 return true;
             };
@@ -2563,9 +2563,9 @@
             if (/^\/disk\/main/.test(path)) return 'main';
             return '';
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.baidu;
             Object.freeze && Object.freeze(panInfo);
@@ -2624,7 +2624,7 @@
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}" -e "${location.origin}/" -A "${ua || navigator.userAgent}"`);
         },
         addPageListener() {
-            doc.on('click', '.pl-button', async (e) => {
+            doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
                 Swal.showLoading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
@@ -2661,7 +2661,7 @@
         addButton() {
             if (!pageNum) return;
             let $toolWrap;
-            let $button = $(`<div class="ali-button pl-button"><svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M853.333 938.667H170.667a85.333 85.333 0 0 1-85.334-85.334v-384A85.333 85.333 0 0 1 170.667 384H288a32 32 0 0 1 0 64H170.667a21.333 21.333 0 0 0-21.334 21.333v384a21.333 21.333 0 0 0 21.334 21.334h682.666a21.333 21.333 0 0 0 21.334-21.334v-384A21.333 21.333 0 0 0 853.333 448H736a32 32 0 0 1 0-64h117.333a85.333 85.333 0 0 1 85.334 85.333v384a85.333 85.333 0 0 1-85.334 85.334z" fill="#fff"/><path d="M715.03 543.552a32.81 32.81 0 0 0-46.251 0L554.005 657.813v-540.48a32 32 0 0 0-64 0v539.734L375.893 543.488a32.79 32.79 0 0 0-46.229 0 32.427 32.427 0 0 0 0 46.037l169.557 168.811a32.81 32.81 0 0 0 46.251 0l169.557-168.81a32.47 32.47 0 0 0 0-45.974z" fill="#FF9C00"/></svg><span>下载助手</span></div>`);
+            let $button = $(`<div class="ali-button fl-button"><svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M853.333 938.667H170.667a85.333 85.333 0 0 1-85.334-85.334v-384A85.333 85.333 0 0 1 170.667 384H288a32 32 0 0 1 0 64H170.667a21.333 21.333 0 0 0-21.334 21.333v384a21.333 21.333 0 0 0 21.334 21.334h682.666a21.333 21.333 0 0 0 21.334-21.334v-384A21.333 21.333 0 0 0 853.333 448H736a32 32 0 0 1 0-64h117.333a85.333 85.333 0 0 1 85.334 85.333v384a85.333 85.333 0 0 1-85.334 85.334z" fill="#fff"/><path d="M715.03 543.552a32.81 32.81 0 0 0-46.251 0L554.005 657.813v-540.48a32 32 0 0 0-64 0v539.734L375.893 543.488a32.79 32.79 0 0 0-46.229 0 32.427 32.427 0 0 0 0 46.037l169.557 168.811a32.81 32.81 0 0 0 46.251 0l169.557-168.81a32.47 32.47 0 0 0 0-45.974z" fill="#FF9C00"/></svg><span>下载助手</span></div>`);
             if (pageNum === 'home') {
                 const fallbacks = [
                     panInfo.btn.home,
@@ -2672,7 +2672,7 @@
                 const tryInject = () => {
                     for (const sel of fallbacks) {
                         let $el = $(sel);
-                        if ($el.length && $('.pl-button').length === 0) {
+                        if ($el.length && $('.fl-button').length === 0) {
                             $el.append($button);
                             return true;
                         }
@@ -2822,9 +2822,9 @@
             }
             return true;
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.ali;
             Object.freeze && Object.freeze(panInfo);
@@ -2849,7 +2849,7 @@
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}"`);
         },
         addPageListener() {
-            doc.on('click', '.pl-button', async (e) => {
+            doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
                 Swal.showLoading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
@@ -2865,11 +2865,11 @@
         addButton() {
             if (!pageNum) return;
             let $toolWrap;
-            let $button = $(`<div class="tianyi-button pl-button">下载助手</div>`);
+            let $button = $(`<div class="tianyi-button fl-button">下载助手</div>`);
             if (pageNum === 'home') {
                             base.listenElement(panInfo.btn.home, () => {
                                 let container = document.querySelector(panInfo.btn.home);
-                                if (container && $('.pl-button').length === 0) {
+                                if (container && $('.fl-button').length === 0) {
                                                     this._insertBeforeUpload(container, $button);
                                                 }
                             })
@@ -3003,9 +3003,9 @@
             }
             return true;
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.tianyi;
             Object.freeze && Object.freeze(panInfo);
@@ -3055,7 +3055,7 @@
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}"${cookieStr} -H "User-Agent: ${navigator.userAgent}"`);
         },
         addPageListener() {
-            doc.on('click', '.pl-button', async (e) => {
+            doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
                 Swal.showLoading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
@@ -3075,11 +3075,11 @@
         addButton() {
             if (!pageNum) return;
             let $toolWrap;
-            let $button = $(`<div class="xunlei-button pl-button"><i class="xlpfont xlp-download"></i><span style="font-size: 13px;margin-left: 6px;">下载助手</span></div>`);
+            let $button = $(`<div class="xunlei-button fl-button"><i class="xlpfont xlp-download"></i><span style="font-size: 13px;margin-left: 6px;">下载助手</span></div>`);
             if (pageNum === 'home') {
                 this._smartListen(() => {
                     let container = this._findHomeContainer();
-                    if (container && $('.pl-button').length === 0) {
+                    if (container && $('.fl-button').length === 0) {
                         $(container).prepend($button);
                     }
                 });
@@ -3341,9 +3341,9 @@
             }
             return true;
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.xunlei;
             Object.freeze && Object.freeze(panInfo);
@@ -3381,7 +3381,7 @@
                 if ($('.quark-button').length > 0) return;
                 this.addButton();
             });
-            doc.on('click', '.pl-button', async (e) => {
+            doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
                 Swal.showLoading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
@@ -3390,11 +3390,11 @@
         addButton() {
             if (!pageNum) return;
             let $toolWrap;
-            let $button = $(`<div class="quark-button pl-button"><svg width="22" height="22" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 2-2z"/><path d="M14 8h1.553c.85 0 1.16.093 1.47.267.311.174.556.43.722.756.166.326.255.65.255 1.54v4.873c0 .892-.089 1.215-.255 1.54-.166.327-.41.583-.722.757-.31.174-.62.267-1.47.267H6.447c-.85 0-1.16-.093-1.47-.267a1.778 1.778 0 01-.722-.756c-.166-.326-.255-.65-.255-1.54v-4.873c0-.892.089-1.215.255-1.54.166-.327.41-.583.722-.757.31-.174.62-.267 1.47-.267H11"/><path stroke-linecap="round" stroke-linejoin="round" d="M11 3v10"/></g></svg><span>下载助手</span></div>`);
+            let $button = $(`<div class="quark-button fl-button"><svg width="22" height="22" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 2-2z"/><path d="M14 8h1.553c.85 0 1.16.093 1.47.267.311.174.556.43.722.756.166.326.255.65.255 1.54v4.873c0 .892-.089 1.215-.255 1.54-.166.327-.41.583-.722.757-.31.174-.62.267-1.47.267H6.447c-.85 0-1.16-.093-1.47-.267a1.778 1.778 0 01-.722-.756c-.166-.326-.255-.65-.255-1.54v-4.873c0-.892.089-1.215.255-1.54.166-.327.41-.583.722-.757.31-.174.62-.267 1.47-.267H11"/><path stroke-linecap="round" stroke-linejoin="round" d="M11 3v10"/></g></svg><span>下载助手</span></div>`);
             if (pageNum === 'home') {
                 base.listenElement(panInfo.btn.home, () => {
                     $toolWrap = $(panInfo.btn.home);
-                    $('.pl-button').length === 0 && $toolWrap.prepend($button);
+                    $('.fl-button').length === 0 && $toolWrap.prepend($button);
                 });
             }
         },
@@ -3532,9 +3532,9 @@
             }
             return true;
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.quark;
             Object.freeze && Object.freeze(panInfo);
@@ -3560,7 +3560,7 @@
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}"`);
         },
         addPageListener() {
-            doc.on('click', '.pl-button', async (e) => {
+            doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
                 Swal.showLoading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
@@ -3569,11 +3569,11 @@
         addButton() {
             if (!pageNum) return;
             let $toolWrap;
-            let $button = $(`<div class="yidong-button pl-button"><svg viewBox="0 0 40 40" width="20" height="20" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M19 5h2v1h-2zM18 6h4v1h-4zM18 7h4v1h-4zM18 8h4v1h-4zM18 9h4v1h-4zM18 10h4v1h-4zM18 11h4v1h-4zM18 12h4v1h-4zM18 13h4v1h-4zM18 14h4v1h-4zM18 15h4v1h-4zM18 16h4v1h-4zM18 17h4v1h-4zM12 18h3v1h-3zM18 18h4v1h-4zM25 18h3v1h-3zM12 19h3v1h-3zM18 19h4v1h-4zM25 19h3v1h-3zM12 20h4v1h-4zM18 20h4v1h-4zM24 20h4v1h-4zM13 21h4v1h-4zM18 21h4v1h-4zM23 21h4v1h-4zM14 22h12v1h-12zM14 23h12v1h-12zM15 24h10v1h-10zM16 25h8v1h-8zM17 26h6v1h-6zM5 27h2v1h-2zM18 27h4v1h-4zM33 27h2v1h-2zM4 28h4v1h-4zM19 28h2v1h-2zM32 28h4v1h-4zM4 29h4v1h-4zM32 29h4v1h-4zM4 30h4v1h-4zM32 30h4v1h-4zM4 31h4v1h-4zM32 31h4v1h-4zM4 32h32v1h-32zM4 33h32v1h-32zM4 34h32v1h-32zM5 35h30v1h-30z"></path></svg>下载助手</div>`);
+            let $button = $(`<div class="yidong-button fl-button"><svg viewBox="0 0 40 40" width="20" height="20" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M19 5h2v1h-2zM18 6h4v1h-4zM18 7h4v1h-4zM18 8h4v1h-4zM18 9h4v1h-4zM18 10h4v1h-4zM18 11h4v1h-4zM18 12h4v1h-4zM18 13h4v1h-4zM18 14h4v1h-4zM18 15h4v1h-4zM18 16h4v1h-4zM18 17h4v1h-4zM12 18h3v1h-3zM18 18h4v1h-4zM25 18h3v1h-3zM12 19h3v1h-3zM18 19h4v1h-4zM25 19h3v1h-3zM12 20h4v1h-4zM18 20h4v1h-4zM24 20h4v1h-4zM13 21h4v1h-4zM18 21h4v1h-4zM23 21h4v1h-4zM14 22h12v1h-12zM14 23h12v1h-12zM15 24h10v1h-10zM16 25h8v1h-8zM17 26h6v1h-6zM5 27h2v1h-2zM18 27h4v1h-4zM33 27h2v1h-2zM4 28h4v1h-4zM19 28h2v1h-2zM32 28h4v1h-4zM4 29h4v1h-4zM32 29h4v1h-4zM4 30h4v1h-4zM32 30h4v1h-4zM4 31h4v1h-4zM32 31h4v1h-4zM4 32h32v1h-32zM4 33h32v1h-32zM4 34h32v1h-32zM5 35h30v1h-30z"></path></svg>下载助手</div>`);
             if (pageNum === 'home') {
                 base.listenElement(panInfo.btn.home, () => {
                     $toolWrap = $(panInfo.btn.home);
-                    $('.pl-button').length === 0 && $toolWrap.prepend($button);
+                    $('.fl-button').length === 0 && $toolWrap.prepend($button);
                 })
             }
             this.addPageListener();
@@ -3784,9 +3784,9 @@
             }
             return true;
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.yidong;
             Object.freeze && Object.freeze(panInfo);
@@ -3811,7 +3811,7 @@
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}"`);
         },
         addPageListener() {
-            doc.on('click', '.pl-button', async (e) => {
+            doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
                 Swal.showLoading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
@@ -3822,16 +3822,16 @@
             if (pageNum === 'drive') {
                 this._mountDriveBtn();          // 先进页面就挂一次，工具栏已就绪时不用等 DOM 变动
                 base.watchDom(() => {
-                    if ($('.pl-button').length) return;
+                    if ($('.fl-button').length) return;
                     this._mountDriveBtn();
                 });
                 return;
             }
-            let cls = pageNum === 'dir' ? 'ctfile-button ctfile-button-sm pl-button' : 'ctfile-button pl-button';
+            let cls = pageNum === 'dir' ? 'ctfile-button ctfile-button-sm fl-button' : 'ctfile-button fl-button';
             let $button = $(`<div class="${cls}" title="下载助手">${BTN_ICON}下载助手</div>`);
             let mount = pageNum === 'dir' ? '.ct-bulk-bar .ct-actions' : '.ct-download-zone .ct-actions';
             base.listenElement(mount, () => {
-                $('.pl-button').length === 0 && $(mount).prepend($button);
+                $('.fl-button').length === 0 && $(mount).prepend($button);
             });
         },
         _uploadBtn() {
@@ -3844,7 +3844,7 @@
             return $hit.length ? $hit : null;
         },
         _mountDriveBtn() {
-            if ($('.pl-button').length) return true;    // 已经挂过，别重复插
+            if ($('.fl-button').length) return true;    // 已经挂过，别重复插
             let $up = this._uploadBtn();
             if (!$up) return false;         // 工具栏还没渲染出来，等 DOM 变动再挂
             let up = $up[0], cs = getComputedStyle(up);
@@ -3898,10 +3898,10 @@
             window.addEventListener('hashchange', () => {
                 pageNum = this.detectPage();
                 if (pageNum === 'drive') {
-                    if (!$('.ctfile-button.pl-button').length) this._mountDriveBtn();
+                    if (!$('.ctfile-button.fl-button').length) this._mountDriveBtn();
                     return;
                 }
-                $('.ctfile-button.pl-button').remove();
+                $('.ctfile-button.fl-button').remove();
             });
         },
         // 分享页 /f/<id> 与目录页 /d/<id>，提取码都在 ?p=
@@ -4295,9 +4295,9 @@
             if (/(^|\.)drive\.ctfile\.com$/.test(location.host)) return 'drive';
             return '';
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = {};
             this.addButton();
@@ -4311,28 +4311,28 @@
         init() {
             base.migrate();
             if (/(pan|yun).baidu.com/.test(location.host)) {
-                baidu.initPanLinker();
+                baidu.initFerryLink();
             }
             if (/openapi.baidu.com\/oauth/.test(location.href)) {
                 baidu.initAuthorize()
             }
             if (/www.(aliyundrive|alipan).com/.test(location.host)) {
-                ali.initPanLinker();
+                ali.initFerryLink();
             }
             if (/cloud.189.cn/.test(location.host)) {
-                tianyi.initPanLinker();
+                tianyi.initFerryLink();
             }
             if (/pan.xunlei.com/.test(location.host)) {
-                xunlei.initPanLinker();
+                xunlei.initFerryLink();
             }
             if (/pan.quark.cn/.test(location.host)) {
-                quark.initPanLinker();
+                quark.initFerryLink();
             }
             if (/(yun|caiyun).139.com/.test(location.host)) {
-                yidong.initPanLinker();
+                yidong.initFerryLink();
             }
             if (/(^|\.)ctfile\.(com|net|cn)$|(^|\.)545c\.com$/.test(location.host)) {
-                ctfile.initPanLinker();
+                ctfile.initFerryLink();
             }
         }
     };
