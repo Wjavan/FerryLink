@@ -9,9 +9,13 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: "Check @version vs const VERSION"
+      - name: "版本号只写在 @version 一处"
         run: |
-          v1=$(sed -n 's/.*@version[ \t]\+\([0-9.]\+\).*/\1/p' "网盘直链下载助手.user.js")
-          v2=$(sed -n "s/.*const VERSION = '\([0-9.]\+\)'.*/\1/p" "网盘直链下载助手.user.js")
-          echo "@version=$v1  const VERSION=$v2"
-          [ "$v1" = "$v2" ] || { echo "::error::@version ($v1) 与 const VERSION ($v2) 不一致"; exit 1; }
+          f="网盘直链下载助手.user.js"
+          n=$(grep -c '^// @version' "$f" || true)
+          [ "$n" -eq 1 ] || { echo "::error::@version 出现 $n 次，应恰好 1 次"; exit 1; }
+          if grep -nE '^[[:space:]]*(const|let|var)[[:space:]]+VERSION[[:space:]]*=' "$f"; then
+            echo "::error::代码里又出现第二份版本号，只允许写在元数据头"
+            exit 1
+          fi
+          echo "OK: $(grep '^// @version' "$f")"
