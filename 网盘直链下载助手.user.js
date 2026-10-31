@@ -77,7 +77,7 @@
     }
     // 列表参数只有页面知道，记下它发的那条请求
     const driveHdrs = {};          // 城通给的下载地址常配一组头，按 URL 存
-    const BTN_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.2m0 0L5.2 6.9M8 9.7l2.8-2.8M3.2 12.8h9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const BTN_ICON = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 3v9"></path><path d="M5 8l4 4 4-4"></path><path d="M3 12v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3"></path></svg>';
     const ROW_BUTTON = '<div class="ctfile-button ctfile-button-peer pl-button" title="下载助手">' + BTN_ICON + '下载助手</div>';
     const clampGap = (v) => Math.max(-40, Math.min(40, Math.round(v)));
     const driveTrace = { url: '', body: '' };
@@ -2011,10 +2011,11 @@
             .xunlei-button { display: inline-flex; align-items: center; justify-content: center; border: 0 solid transparent; border-radius: 5px; white-space: nowrap; flex-shrink: 0; font-size: 14px; line-height: 1.5; outline: 0; touch-action: manipulation; transition: background .3s ease; color: #fff; background: #3f85ff; margin-left: 12px; padding: 0 12px; position: relative; cursor: pointer; height: 36px; min-height: 32px; }
             .xunlei-button:hover { background: #619bff; }
             .xunlei-button:focus-visible { outline: 2px solid #3f85ff; outline-offset: 2px; }
-            .tianyi-button { margin-right: 12px; padding: 4px 12px; border-radius: 4px; color: #fff; font-size: 14px; border: 1px solid #0073e3; background: #2b89ea; cursor: pointer; position: relative; min-height: 32px; transition: background .3s ease; width: auto; white-space: nowrap; text-align: center; }
+            .tianyi-button { display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; padding: 4px 12px; border-radius: 4px; color: #fff; font-size: 12px; border: 1px solid #0073e3; background: #2b89ea; cursor: pointer; position: relative; min-height: 32px; transition: background .3s ease; width: auto; white-space: nowrap; text-align: center; }
             .tianyi-button:hover { border-color: #1874d3; background: #3699ff; }
             .tianyi-button:focus-visible { outline: 2px solid #2b89ea; outline-offset: 2px; }
-            .yidong-button { float: left; position: relative; margin: 20px 24px 20px 0; width: 98px; height: 36px; background: #3181f9; border-radius: 2px; font-size: 14px; color: #fff; line-height: 36px; text-align: center; cursor: pointer; min-height: 32px; transition: background .3s ease; }
+            .yidong-button { float: left; position: relative; display: flex; align-items: center; justify-content: center; gap: 4px; margin: 20px 24px 20px 0; width: 98px; height: 36px; background: #3181f9; border-radius: 2px; font-size: 14px; color: #fff; line-height: 1; text-align: center; cursor: pointer; min-height: 32px; transition: background .3s ease; }
+            .yidong-button svg { width: 20px; height: 20px; flex: 0 0 auto; }
             .yidong-button:hover { background: #2d76e5; }
             .yidong-button:focus-visible { outline: 2px solid #3181f9; outline-offset: 2px; }
             .quark-button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #0d53ff; border-radius: 8px; white-space: nowrap; flex-shrink: 0; font-size: 12px; font-weight: 600; line-height: 1.5; outline: 0; color: #fff; background: #0d53ff; margin-right: 10px; padding: 0 10px; position: relative; cursor: pointer; height: 36px; min-height: 32px; transition: background .3s ease; }
@@ -2024,15 +2025,15 @@
             .ctfile-button:hover { background: #0958d9; border-color: #0958d9; }
             .ctfile-button:active { background: #003eb3; border-color: #003eb3; }
             .ctfile-button:focus-visible { outline: 2px solid #0958d9; outline-offset: 2px; }
-            .ctfile-button svg { width: 16px; height: 16px; flex-shrink: 0; }
+            .ctfile-button svg { width: 18px; height: 18px; flex-shrink: 0; }
             .ctfile-button-sm { height: 30px; padding: 0 14px; gap: 6px; font-size: 14px; font-weight: 600; }
-            .ctfile-button-sm svg { width: 14px; height: 14px; }
+            .ctfile-button-sm svg { width: 16px; height: 16px; }
             /* 跟「上传/上传文件夹」同款：色值、高度、圆角挂载时从旁边按钮读回来（--fl-*） */
             .ctfile-button-peer { margin: 0; height: var(--fl-h, 32px); padding: 0 14px; gap: 6px; border: 1px solid var(--fl-bd, #1677ff); border-radius: var(--fl-r, 8px); background: var(--fl-bg, #1677ff); color: var(--fl-fg, #fff); font-size: var(--fl-fs, 14px); font-weight: var(--fl-fw, 600); }
             .ctfile-button-peer:hover { box-shadow: inset 0 0 0 999px rgba(255, 255, 255, .14); }
             .ctfile-button-peer:active { box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .12); }
             .ctfile-button-peer:focus-visible { outline: 2px solid var(--fl-bd, #1677ff); outline-offset: 2px; }
-            .ctfile-button-peer svg { width: 14px; height: 14px; }
+            .ctfile-button-peer svg { width: 18px; height: 18px; }
             .pointer { cursor: pointer; }
             /* 设置页：菜单式主设置页行样式 */
             .pl-setting-list { text-align: left; }
@@ -3568,7 +3569,7 @@
         addButton() {
             if (!pageNum) return;
             let $toolWrap;
-            let $button = $(`<div class="yidong-button pl-button">下载助手</div>`);
+            let $button = $(`<div class="yidong-button pl-button"><svg viewBox="0 0 40 40" width="20" height="20" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M19 5h2v1h-2zM18 6h4v1h-4zM18 7h4v1h-4zM18 8h4v1h-4zM18 9h4v1h-4zM18 10h4v1h-4zM18 11h4v1h-4zM18 12h4v1h-4zM18 13h4v1h-4zM18 14h4v1h-4zM18 15h4v1h-4zM18 16h4v1h-4zM18 17h4v1h-4zM12 18h3v1h-3zM18 18h4v1h-4zM25 18h3v1h-3zM12 19h3v1h-3zM18 19h4v1h-4zM25 19h3v1h-3zM12 20h4v1h-4zM18 20h4v1h-4zM24 20h4v1h-4zM13 21h4v1h-4zM18 21h4v1h-4zM23 21h4v1h-4zM14 22h12v1h-12zM14 23h12v1h-12zM15 24h10v1h-10zM16 25h8v1h-8zM17 26h6v1h-6zM5 27h2v1h-2zM18 27h4v1h-4zM33 27h2v1h-2zM4 28h4v1h-4zM19 28h2v1h-2zM32 28h4v1h-4zM4 29h4v1h-4zM32 29h4v1h-4zM4 30h4v1h-4zM32 30h4v1h-4zM4 31h4v1h-4zM32 31h4v1h-4zM4 32h32v1h-32zM4 33h32v1h-32zM4 34h32v1h-32zM5 35h30v1h-30z"></path></svg>下载助手</div>`);
             if (pageNum === 'home') {
                 base.listenElement(panInfo.btn.home, () => {
                     $toolWrap = $(panInfo.btn.home);
@@ -3827,7 +3828,7 @@
                 return;
             }
             let cls = pageNum === 'dir' ? 'ctfile-button ctfile-button-sm pl-button' : 'ctfile-button pl-button';
-            let $button = $(`<div class="${cls}" title="下载助手"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.2m0 0L5.2 6.9M8 9.7l2.8-2.8M3.2 12.8h9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>下载助手</div>`);
+            let $button = $(`<div class="${cls}" title="下载助手">${BTN_ICON}下载助手</div>`);
             let mount = pageNum === 'dir' ? '.ct-bulk-bar .ct-actions' : '.ct-download-zone .ct-actions';
             base.listenElement(mount, () => {
                 $('.pl-button').length === 0 && $(mount).prepend($button);
