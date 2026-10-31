@@ -1931,7 +1931,7 @@
                 requestAnimationFrame(() => { if (!$('.fl-button').length) callback(); });
             }).observe(document.body, { childList: true, subtree: true });
         },
-        addPanLinkerStyle() {
+        addFerryLinkStyle() {
             color = base.getValue('setting_theme_color');
             const darkRules = `
             .ferrylink-swal-popup, .fl-popup { background: #1d1e1f !important; color: #d8d9da; }
@@ -2155,7 +2155,7 @@
             .fl-setting-actions { display: flex; align-items: center; justify-content: center; gap: 80px; padding-top: 14px; }
             .fl-setting-theme-btn { flex: 0 0 auto; min-height: 32px; padding: 4px 16px; cursor: pointer; }
             `;
-            this.addStyle('panlinker-style', 'style', css);
+            this.addStyle('ferrylink-style', 'style', css);
             this.applyThemeMode();
         },
         applyThemeMode() {
@@ -2563,9 +2563,9 @@
             if (/^\/disk\/main/.test(path)) return 'main';
             return '';
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.baidu;
             Object.freeze && Object.freeze(panInfo);
@@ -2822,9 +2822,9 @@
             }
             return true;
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.ali;
             Object.freeze && Object.freeze(panInfo);
@@ -3003,9 +3003,9 @@
             }
             return true;
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.tianyi;
             Object.freeze && Object.freeze(panInfo);
@@ -3341,9 +3341,9 @@
             }
             return true;
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.xunlei;
             Object.freeze && Object.freeze(panInfo);
@@ -3532,9 +3532,9 @@
             }
             return true;
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.quark;
             Object.freeze && Object.freeze(panInfo);
@@ -3784,9 +3784,9 @@
             }
             return true;
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = LOCAL_CONFIG.yidong;
             Object.freeze && Object.freeze(panInfo);
@@ -4295,9 +4295,9 @@
             if (/(^|\.)drive\.ctfile\.com$/.test(location.host)) return 'drive';
             return '';
         },
-        async initPanLinker() {
+        async initFerryLink() {
             base.initDefaultConfig();
-            base.addPanLinkerStyle();
+            base.addFerryLinkStyle();
             pageNum = this.detectPage();
             panInfo = {};
             this.addButton();
@@ -4311,28 +4311,28 @@
         init() {
             base.migrate();
             if (/(pan|yun).baidu.com/.test(location.host)) {
-                baidu.initPanLinker();
+                baidu.initFerryLink();
             }
             if (/openapi.baidu.com\/oauth/.test(location.href)) {
                 baidu.initAuthorize()
             }
             if (/www.(aliyundrive|alipan).com/.test(location.host)) {
-                ali.initPanLinker();
+                ali.initFerryLink();
             }
             if (/cloud.189.cn/.test(location.host)) {
-                tianyi.initPanLinker();
+                tianyi.initFerryLink();
             }
             if (/pan.xunlei.com/.test(location.host)) {
-                xunlei.initPanLinker();
+                xunlei.initFerryLink();
             }
             if (/pan.quark.cn/.test(location.host)) {
-                quark.initPanLinker();
+                quark.initFerryLink();
             }
             if (/(yun|caiyun).139.com/.test(location.host)) {
-                yidong.initPanLinker();
+                yidong.initFerryLink();
             }
             if (/(^|\.)ctfile\.(com|net|cn)$|(^|\.)545c\.com$/.test(location.host)) {
-                ctfile.initPanLinker();
+                ctfile.initFerryLink();
             }
         }
     };
