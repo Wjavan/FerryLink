@@ -12,8 +12,9 @@ jobs:
       - name: "版本号只写在 @version 一处"
         run: |
           f="网盘直链下载助手.user.js"
-          n=$(grep -c '^// @version' "$f" || true)
+          n=$(grep -c '^// @version[[:space:]]' "$f" || true)
           [ "$n" -eq 1 ] || { echo "::error::@version 出现 $n 次，应恰好 1 次"; exit 1; }
+          grep -qE '^// @version[[:space:]]+[0-9]+(\.[0-9]+)+[[:space:]]*$' "$f" || { echo "::error::@version 格式不对（应形如 1.6.0）"; exit 1; }
           if grep -nE '^[[:space:]]*(const|let|var)[[:space:]]+VERSION[[:space:]]*=' "$f"; then
             echo "::error::代码里又出现第二份版本号，只允许写在元数据头"
             exit 1
