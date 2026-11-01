@@ -12,11 +12,17 @@ jobs:
       - name: "版本号只写在 @version 一处"
         run: |
           f="网盘直链下载助手.user.js"
-          n=$(grep -c '^// @version[[:space:]]' "$f" || true)
-          [ "$n" -eq 1 ] || { echo "::error::@version 出现 $n 次，应恰好 1 次"; exit 1; }
-          grep -qE '^// @version[[:space:]]+[0-9]+(\.[0-9]+)+[[:space:]]*$' "$f" || { echo "::error::@version 格式不对（应形如 1.6.0）"; exit 1; }
-          if grep -nE '^[[:space:]]*(const|let|var)[[:space:]]+VERSION[[:space:]]*=' "$f"; then
-            echo "::error::代码里又出现第二份版本号，只允许写在元数据头"
+          [ -f "$f" ] || { echo "::error::找不到脚本文件 $f"; exit 1; }
+          n=$(grep -cE '^[[:space:]]*// @version[[:space:]]' "$f" || true)
+          [ "$n" -eq 1 ] || { echo "::error::@version 注释应恰好 1 行（缩进的也算），实际 $n 行"; exit 1; }
+          grep -qE '^// @version[[:space:]]+[0-9]+(\.[0-9]+)+[[:space:]]*$' "$f" || { echo "::error::@version 必须在行首元数据头且形如 1.6.0"; exit 1; }
+          v=$(grep -E '^// @version[[:space:]]+[0-9]+(\.[0-9]+)+[[:space:]]*$' "$f" | head -n1 | grep -oE '[0-9]+(\.[0-9]+)+')
+          [ -n "$v" ] || { echo "::error::未能从 @version 行取出版本号"; exit 1; }
+          v_esc=$(printf '%s' "$v" | sed 's/\./\\./g')
+          c=$(grep -oE "(^|[^0-9.])${v_esc}([^0-9.]|$)" "$f" | wc -l)
+          [ "$c" -eq 1 ] || { echo "::error::版本号 $v 全文出现 $c 次，应恰好 1 次（只允许元数据头）"; exit 1; }
+          if grep -nE '^[[:space:]]*(const|let|var)[[:space:]]+[A-Za-z_]*VERSION[A-Za-z_]*[[:space:]]*=' "$f"; then
+            echo "::error::代码里声明了 VERSION 类变量，版本号只允许写在元数据头"
             exit 1
           fi
-          echo "OK: $(grep '^// @version' "$f")"
+          echo "OK: // @version $v（全文件仅此一处）"
