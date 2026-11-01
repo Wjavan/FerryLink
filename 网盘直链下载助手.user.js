@@ -260,7 +260,7 @@
                 const hit = spec.list.find(v => v.toLowerCase() === s);
                 return hit || base.settingChoiceDefault(key);
             }
-            const ok = Array.isArray(raw) && raw.every(i => i && typeof i === 'object');
+            const ok = Array.isArray(raw) && raw.every(i => i && typeof i === 'object' && ['string', 'number'].includes(typeof i.id) && String(i.id).trim() !== '');
             return ok ? raw : base.settingChoiceDefault(key);
         },
         settingChoiceLabel(key) {
