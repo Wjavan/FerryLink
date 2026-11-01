@@ -225,6 +225,7 @@
         setting_terminal_type: {
             value: () => (/Mac/i.test(navigator.platform) ? 'mt' : /Win/i.test(navigator.platform) ? 'wc' : 'lt'),
             list: Object.keys(terminalType),
+            text: terminalType,
         },
         setting_theme_color: {
             value: '#09AAFF',
@@ -260,7 +261,7 @@
                 const hit = spec.list.find(v => v.toLowerCase() === s);
                 return hit || base.settingChoiceDefault(key);
             }
-            const ok = Array.isArray(raw) && raw.every(i => i && typeof i === 'object' && ['string', 'number'].includes(typeof i.id) && String(i.id).trim() !== '');
+            const ok = Array.isArray(raw) && raw.length > 0 && raw.every(i => i && typeof i === 'object' && ['string', 'number'].includes(typeof i.id) && String(i.id).trim() !== '');
             return ok ? raw : base.settingChoiceDefault(key);
         },
         settingChoiceLabel(key) {
