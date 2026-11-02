@@ -1,0 +1,5 @@
+# 依赖内容指纹：地址 + SHA256。换依赖版本时连同这行一起改。
+# 没有登记地址只打 WARN，不拦；登记了但内容对不上就是被换过，直接红。
+https://registry.npmmirror.com/jquery/3.7.0/files/dist/jquery.min.js d8f9afbf492e4c139e9d2bcb9ba6ef7c14921eb509fb703bc7a3f911b774eff8
+https://registry.npmmirror.com/sweetalert2/10.16.6/files/dist/sweetalert2.all.min.js 042037da753e9b278b09dff0f7a73e163b628c355988442eb983893122c5ed49
+https://registry.npmmirror.com/js-md5/0.7.3/files/build/md5.min.js 31d57206075645a34f442e3a56d5d2b445e437cf99739889bc1d65662b02bc31
