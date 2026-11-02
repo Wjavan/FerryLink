@@ -215,6 +215,26 @@
         }
     };
     const LEGACY_LOCAL_KEYS = ['baiduyunPlugin_BDUSS', 'accessToken'];
+    // 有固定选项的设置：默认值和可选值只写这一处
+    const SETTING_CHOICES = {
+        setting_theme_mode: {
+            value: 'light',
+            list: ['light', 'dark'],
+            text: { light: '浅色', dark: '深色' },
+        },
+        setting_terminal_type: {
+            value: () => (/Mac/i.test(navigator.platform) ? 'mt' : /Win/i.test(navigator.platform) ? 'wc' : 'lt'),
+            list: Object.keys(terminalType),
+            text: terminalType,
+        },
+        setting_theme_color: {
+            value: '#09AAFF',
+            list: ['#09AAFF', '#cc3235', '#526efa', '#518c17', '#ed944b', '#f969a5', '#bca280'],
+        },
+        setting_idm_rpc: {
+            value: [{ id: '1', default: true }],
+        },
+    };
     let base = {
         getCookie(name) {
             let cname = name + "=";
@@ -230,6 +250,29 @@
         },
         getValue(name) {
             return GM_getValue(name);
+        },
+        // 选项不对就按默认值用，不改存储
+        settingChoice(key) {
+            const spec = SETTING_CHOICES[key];
+            const raw = base.getValue(key);
+            if (!spec) return raw;
+            if (spec.list) {
+                const s = String(raw == null ? '' : raw).toLowerCase();
+                const hit = spec.list.find(v => v.toLowerCase() === s);
+                return hit || base.settingChoiceDefault(key);
+            }
+            const ok = Array.isArray(raw) && raw.length > 0 && raw.every(i => i && typeof i === 'object' && ['string', 'number'].includes(typeof i.id) && String(i.id).trim() !== '');
+            return ok ? raw : base.settingChoiceDefault(key);
+        },
+        settingChoiceLabel(key) {
+            const v = base.settingChoice(key);
+            const spec = SETTING_CHOICES[key];
+            return (spec && spec.text && spec.text[v]) || v;
+        },
+        settingChoiceDefault(key) {
+            const f = SETTING_CHOICES[key].value;
+            if (typeof f === 'function') return f();
+            return Array.isArray(f) ? f.map(i => ({ ...i })) : f;
         },
         setValue(name, value) {
             GM_setValue(name, value);
@@ -249,8 +292,9 @@
                 if (legacy !== null && legacy !== undefined) {
                     GM_setValue(key, legacy);
                     v = legacy;
+                    // 只删刚搬走的那一份，站点换了新值就留着
+                    try { if (localStorage.getItem(key) === legacy) localStorage.removeItem(key); } catch (e) { /* storage unavailable */ }
                 }
-                try { localStorage.removeItem(key); } catch (e) { /* storage unavailable */ }
             }
             try {
                 return JSON.parse(v);
@@ -293,18 +337,20 @@
         },
         migrate() {
             const MARK = 'ferrylink_migrated_version';
-            const VERSION = '1.6.0';
+            // 动作都幂等，每次启动跑一遍；标记只用来证明脚本体跑过
             try {
-                if (GM_getValue(MARK, '') === VERSION) return;
-                ['shareToken', 'share_token', 'ferrylink_last_downloader', 'ferrylink_last_protocol'].forEach((k) => {
+                // 前两个是别人的键名，只清自己的抽屉；后两个是自家命名空间，连公共桌面一起清
+                ['shareToken', 'share_token'].forEach((k) => {
+                    try { GM_deleteValue(k); } catch (e) {}
+                });
+                ['ferrylink_last_downloader', 'ferrylink_last_protocol'].forEach((k) => {
                     try { GM_deleteValue(k); localStorage.removeItem(k); } catch (e) {}
                 });
                 LEGACY_LOCAL_KEYS.forEach((k) => {
-                    // 存量凭据搬到 GM 存储后清掉原处，不留副本
+                    // 搬家与清理都在 getStorage 里做，它只删自己搬走的那一份
                     try { base.getStorage(k); } catch (e) {}
-                    try { localStorage.removeItem(k); } catch (e) {}
                 });
-                GM_setValue(MARK, VERSION);
+                if (GM_getValue(MARK, '') === '') GM_setValue(MARK, '1');
             } catch (e) { /* never block startup */ }
         },
         setClipboard(text) {
@@ -631,32 +677,30 @@
                 { name: 'setting_rpc_path', value: base.rpcDefaults.path },
                 { name: 'setting_rpc_token', value: base.rpcDefaults.token },
                 { name: 'setting_rpc_dir', value: base.rpcDefaults.dir },
-                { name: 'setting_terminal_type', value: /Mac/i.test(navigator.platform) ? 'mt'
-                     : /Win/i.test(navigator.platform) ? 'wc' : 'lt' },
-                { name: 'setting_theme_mode', value: 'light' },
-                { name: 'setting_theme_color', value: '#09AAFF' },
                 { name: 'setting_bitcomet_domain', value: base.bcDefaults.domain },
                 { name: 'setting_bitcomet_port', value: base.bcDefaults.port },
                 { name: 'setting_bitcomet_path', value: base.bcDefaults.path },
                 { name: 'setting_bitcomet_user', value: base.bcDefaults.user },
                 { name: 'setting_bitcomet_pass', value: base.bcDefaults.pass },
                 { name: 'setting_bitcomet_dir', value: base.bcDefaults.dir },
-                { name: 'setting_idm_rpc', value: [{ id: '1', default: true }] },
             ];
             value.forEach((v) => {
                 base.getValue(v.name) === undefined && base.setValue(v.name, v.value);
+            });
+            Object.keys(SETTING_CHOICES).forEach((k) => {
+                base.getValue(k) === undefined && base.setValue(k, base.settingChoiceDefault(k));
             });
         },
         showSetting() {
             const rpcVal = `${base.getValue('setting_rpc_domain')}:${base.getValue('setting_rpc_port')}${base.getValue('setting_rpc_path')}`;
             const idmId = base._idmId();
             let colorBtn = '';
-            ['#09AAFF', '#cc3235', '#526efa', '#518c17', '#ed944b', '#f969a5', '#bca280'].forEach((v) => {
-                colorBtn += `<div data-color="${v}" style="background: ${v};border: 1px solid ${v}" class="fl-color-box listener-color ${v === base.getValue('setting_theme_color') ? 'checked' : ''}" tabindex="0" role="button"></div>`;
+            SETTING_CHOICES.setting_theme_color.list.forEach((v) => {
+                colorBtn += `<div data-color="${v}" style="background: ${v};border: 1px solid ${v}" class="fl-color-box listener-color ${v === base.settingChoice('setting_theme_color') ? 'checked' : ''}" tabindex="0" role="button"></div>`;
             });
             let termOpts = '';
             Object.keys(terminalType).forEach(k => {
-                termOpts += `<option value="${k}" ${base.getValue('setting_terminal_type') === k ? 'selected' : ''}>${terminalType[k]}</option>`;
+                termOpts += `<option value="${k}" ${base.settingChoice('setting_terminal_type') === k ? 'selected' : ''}>${terminalType[k]}</option>`;
             });
             const dom = `<div class="fl-setting-list">
                 <div class="fl-setting-row fl-setting-row-click listener-open-idm-setting">
@@ -677,8 +721,8 @@
                     <div class="fl-color">${colorBtn}</div>
                 </div>
                 <div class="fl-setting-row">
-                    <div class="fl-setting-row-main"><div class="fl-setting-row-name">深色模式</div><div class="fl-setting-row-sub listener-theme-mode-sub">${({ light: '浅色', dark: '深色' })[base.getValue('setting_theme_mode') || 'light'] || '浅色'}</div></div>
-                    <button type="button" class="fl-input listener-theme-mode fl-setting-theme-btn">${({ light: '浅色', dark: '深色' })[base.getValue('setting_theme_mode') || 'light'] || '浅色'}</button>
+                    <div class="fl-setting-row-main"><div class="fl-setting-row-name">深色模式</div><div class="fl-setting-row-sub listener-theme-mode-sub">${base.settingChoiceLabel('setting_theme_mode')}</div></div>
+                    <button type="button" class="fl-input listener-theme-mode fl-setting-theme-btn">${base.settingChoiceLabel('setting_theme_mode')}</button>
                 </div>
                 <div class="fl-setting-help">帮助：<a href="https://www.youxiaohou.com/zh-cn/motrix.html" target="_blank" rel="noreferrer noopener">RPC 配置说明</a> · <a href="https://www.youxiaohou.com/zh-cn/curl.html" target="_blank" rel="noreferrer noopener">cURL 使用教程</a> · <a href="https://github.com/Wjavan/FerryLink" target="_blank" rel="noreferrer noopener">项目主页</a></div>
             </div>`;
@@ -815,7 +859,7 @@
             this.settingBound = true;
             doc.on('click', '.listener-color', (e) => {
                 const picked = e.target.dataset.color;
-                if (base.getValue('setting_theme_color') === picked || base._themeSwitching) return;
+                if (base.settingChoice('setting_theme_color') === picked || base._themeSwitching) return;
                 base.setValue('setting_theme_color', picked);
                 message.success('切换成功！');
                 // 主色要重载才生效，让提示先渲染一帧再走
@@ -826,15 +870,12 @@
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
             });
             doc.on('click', '.listener-theme-mode', () => {
-                const order = ['light', 'dark'];
-                const labels = { light: '浅色', dark: '深色' };
-                const cur = base.getValue('setting_theme_mode') || 'light';
-                const next = order[(order.indexOf(cur) + 1) % order.length] || 'light';
+                const modes = SETTING_CHOICES.setting_theme_mode.list;
+                const next = modes[(modes.indexOf(base.settingChoice('setting_theme_mode')) + 1) % modes.length];
                 base.setValue('setting_theme_mode', next);
                 base.applyThemeMode();
-                const label = labels[next] || '浅色';
-                $('.listener-theme-mode').text(label);
-                $('.listener-theme-mode-sub').text(label);
+                $('.listener-theme-mode').text(base.settingChoiceLabel('setting_theme_mode'));
+                $('.listener-theme-mode-sub').text(base.settingChoiceLabel('setting_theme_mode'));
             });
             doc.on('input', '.listener-domain', async (e) => {
                 base.setValue('setting_rpc_domain', e.target.value);
@@ -915,7 +956,7 @@
             });
         },
         _idmId() {
-            const idmCfg = base.getValue('setting_idm_rpc');
+            const idmCfg = base.settingChoice('setting_idm_rpc');
             return (Array.isArray(idmCfg) ? (idmCfg.find(i => i && i.default) || idmCfg[0] || {}).id : (idmCfg && idmCfg.id)) || '1';
         },
         async testRpcConnection() {
@@ -1841,7 +1882,7 @@
                     }
                 },
         async sendLinkToIDM(link, filename, filesize, headers = {}) {
-            const list = base.getValue('setting_idm_rpc') || [];
+            const list = base.settingChoice('setting_idm_rpc') || [];
             const rpc = list.find(i => i && i.default) || list[0] || { id: '1' };
             if (!this.sendLinkToIDM.lock) this.sendLinkToIDM.lock = Promise.resolve();
             return this.sendLinkToIDM.lock = this.sendLinkToIDM.lock.then(async () => {
@@ -1930,7 +1971,7 @@
             }).observe(document.body, { childList: true, subtree: true });
         },
         addFerryLinkStyle() {
-            color = base.getValue('setting_theme_color');
+            color = base.settingChoice('setting_theme_color');
             const darkRules = `
             .ferrylink-swal-popup, .fl-popup { background: #1d1e1f !important; color: #d8d9da; }
             .swal2-title { color: #e8eaed; }
@@ -2160,7 +2201,7 @@
             this.applyThemeMode();
         },
         applyThemeMode() {
-            const dark = (base.getValue('setting_theme_mode') || 'light') === 'dark';
+            const dark = base.settingChoice('setting_theme_mode') === 'dark';
             $(document.body).toggleClass('fl-dark', dark);
         },
     };
@@ -2277,7 +2318,7 @@
         },
         convertLinkToCurl(link, filename, ua) {
             let BDUSS = this.getBDUSS();
-            let terminal = base.getValue('setting_terminal_type');
+            let terminal = base.settingChoice('setting_terminal_type');
             filename = base.fixFilename(filename);
             let cookie = BDUSS ? ` -b "BDUSS=${BDUSS}"` : '';
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}" -A "${ua}"${cookie}`);
@@ -2619,7 +2660,7 @@
             });
         },
         convertLinkToCurl(link, filename, ua) {
-            let terminal = base.getValue('setting_terminal_type');
+            let terminal = base.settingChoice('setting_terminal_type');
             filename = base.fixFilename(filename);
             // -e 带 Referer：域名会迁移，写死 aliyundrive.com 在 alipan.com 上会 403
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}" -e "${location.origin}/" -A "${ua || navigator.userAgent}"`);
@@ -2845,7 +2886,7 @@
             return encodeURIComponent(`bc://http/${base.e(bc)}`);
         },
         convertLinkToCurl(link, filename, ua) {
-            let terminal = base.getValue('setting_terminal_type');
+            let terminal = base.settingChoice('setting_terminal_type');
             filename = base.fixFilename(filename);
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}"`);
         },
@@ -3049,7 +3090,7 @@
             });
         },
         convertLinkToCurl(link, filename, ua) {
-            let terminal = base.getValue('setting_terminal_type');
+            let terminal = base.settingChoice('setting_terminal_type');
             filename = base.fixFilename(filename);
             let cookie = this._getAuthCookie();
             let cookieStr = cookie ? ` -b "${cookie}"` : '';
@@ -3368,7 +3409,7 @@
             });
         },
         convertLinkToCurl(link, filename, ua) {
-            let terminal = base.getValue('setting_terminal_type');
+            let terminal = base.settingChoice('setting_terminal_type');
             filename = base.fixFilename(filename);
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}" -A "${panInfo.ua}" -b "${String(document.cookie).replace(/[\\"`$]/g, '')}"`);
         },
@@ -3556,7 +3597,7 @@
             return encodeURIComponent(`bc://http/${base.e(bc)}`);
         },
         convertLinkToCurl(link, filename, ua) {
-            let terminal = base.getValue('setting_terminal_type');
+            let terminal = base.settingChoice('setting_terminal_type');
             filename = base.fixFilename(filename);
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}"`);
         },
@@ -3807,7 +3848,7 @@
             return encodeURIComponent(`bc://http/${base.e(bc)}`);
         },
         convertLinkToCurl(link, filename, ua) {
-            let terminal = base.getValue('setting_terminal_type');
+            let terminal = base.settingChoice('setting_terminal_type');
             filename = base.fixFilename(filename);
             return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}"`);
         },
