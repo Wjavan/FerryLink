@@ -261,7 +261,7 @@
                 const hit = spec.list.find(v => v.toLowerCase() === s);
                 return hit || base.settingChoiceDefault(key);
             }
-            const ok = Array.isArray(raw) && raw.length > 0 && raw.every(i => i && typeof i === 'object' && ['string', 'number'].includes(typeof i.id) && String(i.id).trim() !== '');
+            const ok = Array.isArray(raw) && raw.length > 0 && raw.every(i => i && typeof i === 'object' && ['string', 'number'].includes(typeof i.id) && /^\d+$/.test(String(i.id).trim()));
             return ok ? raw : base.settingChoiceDefault(key);
         },
         settingChoiceLabel(key) {
@@ -893,7 +893,9 @@
                 base.setValue('setting_rpc_dir', e.target.value);
             });
             doc.on('input', '.listener-idm-id', async (e) => {
-                const v = (e.target.value || '1').trim() || '1';
+                const t = (e.target.value || '').trim();
+                const v = /^\d+$/.test(t) ? t : '1';
+                if (e.target.value !== v) e.target.value = v;
                 base.setValue('setting_idm_rpc', [{ id: v, default: true }]);
             });
             doc.on('change', '.listener-terminal', async (e) => {
