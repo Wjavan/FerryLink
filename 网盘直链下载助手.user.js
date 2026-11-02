@@ -261,8 +261,9 @@
                 const hit = spec.list.find(v => v.toLowerCase() === s);
                 return hit || base.settingChoiceDefault(key);
             }
-            const ok = Array.isArray(raw) && raw.length > 0 && raw.every(i => i && typeof i === 'object' && ['string', 'number'].includes(typeof i.id) && /^\d+$/.test(String(i.id).trim()));
-            return ok ? raw : base.settingChoiceDefault(key);
+            const ok = Array.isArray(raw) && raw.length > 0 && raw.every(i => i && typeof i === 'object' && base._isIdmId(i.id));
+            // 旧值可能带空格或是数字型，取用时统一成字符串
+            return ok ? raw.map(i => ({ ...i, id: String(i.id).trim() })) : base.settingChoiceDefault(key);
         },
         settingChoiceLabel(key) {
             const v = base.settingChoice(key);
@@ -894,8 +895,12 @@
             });
             doc.on('input', '.listener-idm-id', async (e) => {
                 const t = (e.target.value || '').trim();
-                const v = /^\d+$/.test(t) ? t : '1';
-                if (e.target.value !== v) e.target.value = v;
+                if (base._isIdmId(t)) base.setValue('setting_idm_rpc', [{ id: t, default: true }]);
+            });
+            doc.on('change', '.listener-idm-id', async (e) => {
+                const t = (e.target.value || '').trim();
+                const v = base._isIdmId(t) ? t : '1';
+                e.target.value = v;
                 base.setValue('setting_idm_rpc', [{ id: v, default: true }]);
             });
             doc.on('change', '.listener-terminal', async (e) => {
@@ -956,6 +961,9 @@
                     .forEach(k => base.setValue(k, base.bcDefaults[k.slice('setting_bitcomet_'.length).toLowerCase()]));
                 base.panelNotice('BitComet 配置已恢复默认', 'success');
             });
+        },
+        _isIdmId(v) {
+            return (typeof v === 'string' || typeof v === 'number') && /^\d+$/.test(String(v).trim());
         },
         _idmId() {
             const idmCfg = base.settingChoice('setting_idm_rpc');
