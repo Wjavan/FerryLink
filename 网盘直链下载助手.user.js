@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              FerryLink
 // @namespace         https://github.com/Wjavan/FerryLink
-// @version           1.6.0
+// @version           1.6.1
 // @author            Wjavan
 // @description       支持百度/阿里/天翼/迅雷/夸克/移动/城通网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/NDM/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
 // @copyright         2026, Wjavan (https://github.com/Wjavan)
@@ -2411,7 +2411,7 @@
                 }
                 return token;
             };
-            const waitForToken = (maxAttempts = 60) => new Promise((resolve) => {
+            const waitForToken = (maxAttempts = 30) => new Promise((resolve) => {
                 let attempts = 0;
                 const interval = setInterval(() => {
                     const token = base.getValue('baidu_access_token');
@@ -2426,14 +2426,18 @@
                     }
                 }, 1000);
             });
+            let stage = '';
             try {
                 if (base.getFinalUrl) {
+                    stage = '取授权页';
                     let res = await base.getFinalUrl(panInfo.pcs[3]);
                     if (res.includes('authorize')) {
+                        stage = '取授权页 HTML';
                         let html = await base.get(panInfo.pcs[3], {}, 'text');
                         let bdstoken = html.match(/name="bdstoken"\s+value="([^"]+)"/)?.[1];
                         let client_id = html.match(/name="client_id"\s+value="([^"]+)"/)?.[1];
                         if (bdstoken && client_id) {
+                            stage = '提交授权';
                             let data = {
                                 grant_permissions_arr: 'netdisk',
                                 bdstoken: bdstoken,
@@ -2444,17 +2448,27 @@
                             };
                             await base.post(panInfo.pcs[3], base.stringify(data), {'Content-Type': 'application/x-www-form-urlencoded'});
                             let res2 = await base.getFinalUrl(panInfo.pcs[3]);
-                            return saveToken(res2.match(/access_token=([^&]+)/)?.[1]);
+                            let t = saveToken(res2.match(/access_token=([^&]+)/)?.[1]);
+                            if (t) return t;
+                            console.warn('[FerryLink] 百度授权后未返回 access_token');
+                        } else {
+                            console.warn('[FerryLink] 百度授权页缺少 bdstoken/client_id');
                         }
                     } else {
-                        return saveToken(res.match(/access_token=([^&]+)/)?.[1]);
+                        let t = saveToken(res.match(/access_token=([^&]+)/)?.[1]);
+                        if (t) return t;
+                        console.warn('[FerryLink] 百度回跳地址缺少 access_token');
                     }
                 }
             } catch (e) {
+                console.warn('[FerryLink] 百度静默授权失败（' + stage + '）：' + (e && e.message || e));
             }
             base.deleteValue('baidu_access_token');
+            base.tipLoading('已打开百度授权页，正在等待授权完成…');
             GM_openInTab(panInfo.pcs[3], {active: false, insert: true, setParent: true});
-            let token = await waitForToken(60);
+            let token = await waitForToken();
+            // 授权页可能刚好在超时后才写入，再读一次
+            if (!token) token = base.getValue('baidu_access_token');
             return saveToken(token);
         },
         async getCurrentUK() {
@@ -2480,7 +2494,6 @@
                     base.deleteValue('baidu_access_token');
                     base.deleteValue('baidu_access_token_bduss');
                     base.deleteValue('baidu_access_token_uk');
-                    await this.getToken();
                 }
             } catch (e) {
                     message.error('百度授权失败：' + (e.message || '未知错误'));
@@ -2489,6 +2502,7 @@
         async getPCSLink(maxRequestTime = 1) {
             selectedFiles = this.getSelectedList();
             let fidArray = this._getFidArray(), res;
+            const authFail = () => { Swal.close(); return base.renderErrorPanel('百度授权未完成：请刷新重试，仍失败请确认已登录百度', this); };
             if (pageNum === 'home' || pageNum === 'main') {
                 if (selectedFiles.length === 0) {
                     Swal.close(); return base.renderDownloadPanel([], this);
@@ -2518,6 +2532,7 @@
                     }
                 }
                 if (!accessToken) accessToken = await this.getToken();
+                if (!accessToken) return authFail();
 
                 const now = Date.now();
                 const files = selectedFiles.filter(v => +v.isdir !== 1);
@@ -2553,6 +2568,7 @@
                             base.deleteValue('baidu_access_token_bduss');
                             base.deleteValue('baidu_access_token_uk');
                             accessToken = await this.getToken();
+                            if (!accessToken) return authFail();
                             i -= BATCH; continue;
                         }
                         const reason = res && res.errno
@@ -2589,7 +2605,7 @@
                         base.deleteValue('baidu_access_token');
                         base.deleteValue('baidu_access_token_bduss');
                         base.deleteValue('baidu_access_token_uk');
-                        await this.getToken();
+                        if (!(await this.getToken())) return authFail();
                         return this.getPCSLink(maxRequestTime - 1);
                     }
                     return message.error('提示：获取下载链接失败！请刷新网页后重试！');
