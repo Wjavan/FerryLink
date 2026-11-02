@@ -2010,6 +2010,7 @@
             color = base.settingChoice('setting_theme_color');
             const darkRules = `
             .ferrylink-swal-popup, .fl-popup { background: #1d1e1f !important; color: #d8d9da; }
+            .swal2-popup { background: #1d1e1f !important; }
             .swal2-title { color: #e8eaed; }
             .swal2-html-container { color: #d8d9da; }
             .swal2-close { color: #8b8e93; }
