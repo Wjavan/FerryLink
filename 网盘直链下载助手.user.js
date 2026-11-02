@@ -261,8 +261,10 @@
                 const hit = spec.list.find(v => v.toLowerCase() === s);
                 return hit || base.settingChoiceDefault(key);
             }
-            const ok = Array.isArray(raw) && raw.length > 0 && raw.every(i => i && typeof i === 'object' && ['string', 'number'].includes(typeof i.id) && String(i.id).trim() !== '');
-            return ok ? raw : base.settingChoiceDefault(key);
+            // 数组型设置目前只有 IDM 编号，id 只收正整数
+            const ok = Array.isArray(raw) && raw.length > 0 && raw.every(i => i && typeof i === 'object' && base._idmIdNorm(i.id) !== '');
+            // 旧值可能带空格、前导零或是数字型，取用时统一成规范后的字符串
+            return ok ? raw.map(i => ({ ...i, id: base._idmIdNorm(i.id) })) : base.settingChoiceDefault(key);
         },
         settingChoiceLabel(key) {
             const v = base.settingChoice(key);
@@ -789,7 +791,7 @@
         showIDMSetting(fromSetting) {
             const idmId = base._idmId();
             const dom = `<div>
-                <label class="fl-setting-label"><div class="fl-label">客户端 ID</div><input type="text" placeholder="IDM 多配置时的客户端编号，默认 1" class="fl-input listener-idm-id" value="${base.esc(idmId)}"></label>
+                <label class="fl-setting-label"><div class="fl-label">客户端 ID</div><span class="fl-idm-field"><input type="text" placeholder="IDM 多配置时的客户端编号，默认 1" class="fl-input listener-idm-id" data-idm="${base.esc(idmId)}" aria-describedby="fl-idm-tip" value="${base.esc(idmId)}"><span class="fl-idm-bubble" id="fl-idm-tip" role="status" aria-live="polite"><svg class="fl-idm-bubble-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="7" fill="#f2c14e"/><path d="M8 4.2v4.4" stroke="#1f2533" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.3" r=".95" fill="#1f2533"/></svg>仅接受数字，其它字符自动过滤</span></span></label>
                 <div class="fl-setting-tip-text">Client ID 是 IDM 用来区分不同浏览器捕获扩展的编号，多浏览器需各配一个，填错会导致推送失败，一般保持默认 1 即可。取值方法：浏览器进入 IDM 扩展的「管理扩展/调试附加组件」检查视图，在 DevTools 的「应用程序/存储 → 扩展存储 → 本地」里找 client 对应的数字。</div>
             </div>`;
             Swal.fire({
@@ -893,7 +895,35 @@
                 base.setValue('setting_rpc_dir', e.target.value);
             });
             doc.on('input', '.listener-idm-id', async (e) => {
-                const v = (e.target.value || '1').trim() || '1';
+                const el = e.target, raw = el.value || '';
+                // 打字时会经过 0 和前导零，正整数交给 _idmIdNorm
+                if (raw !== '' && !/^\d+$/.test(raw)) {
+                    el.value = el.dataset.idm || '';
+                    el.setAttribute('aria-invalid', 'true');
+                    const bubble = $(el).siblings('.fl-idm-bubble');
+                    bubble.addClass('fl-shown');
+                    // 先撤掉再重排，动画才会在连着出错时重播
+                    bubble.removeClass('is-shake');
+                    void bubble[0].offsetWidth;
+                    bubble.addClass('is-shake');
+                    clearTimeout(bubble.data('hide'));
+                    bubble.data('hide', setTimeout(() => {
+                        bubble.removeClass('fl-shown');
+                        el.removeAttribute('aria-invalid');
+                    }, 2400));
+                    return;
+                }
+                el.removeAttribute('aria-invalid');
+                const digits = raw.replace(/^0+/, '');
+                if (digits !== raw) el.value = digits;
+                el.dataset.idm = digits;
+                if (digits !== '') base.setValue('setting_idm_rpc', [{ id: digits, default: true }]);
+            });
+            doc.on('change', '.listener-idm-id', async (e) => {
+                const v = base._idmIdNorm(e.target.value) || '1';
+                e.target.dataset.idm = v;
+                e.target.removeAttribute('aria-invalid');
+                e.target.value = v;
                 base.setValue('setting_idm_rpc', [{ id: v, default: true }]);
             });
             doc.on('change', '.listener-terminal', async (e) => {
@@ -954,6 +984,12 @@
                     .forEach(k => base.setValue(k, base.bcDefaults[k.slice('setting_bitcomet_'.length).toLowerCase()]));
                 base.panelNotice('BitComet 配置已恢复默认', 'success');
             });
+        },
+        // 编号是正整数，先去掉前导零；不合法返回空串
+        _idmIdNorm(v) {
+            if (typeof v !== 'string' && typeof v !== 'number') return '';
+            const s = String(v).trim().replace(/^0+/, '');
+            return /^\d+$/.test(s) ? s : '';
         },
         _idmId() {
             const idmCfg = base.settingChoice('setting_idm_rpc');
@@ -1987,6 +2023,7 @@
             .fl-setting-row-click::after { color: #8b8e93; }
             .fl-setting-row-click:hover::after { color: ${color}; }
             .fl-label { color: #e8eaed; }
+            .fl-idm-bubble { box-shadow: 0 0 0 3px #1d1e1f, 0 8px 24px rgba(0, 0, 0, .45); }
             .fl-input { background: #2a2b2c; border-color: #3f4041; color: #e8eaed; }
             .fl-input::placeholder { color: #6b6e73; }
             .fl-color-box { border-color: #3f4041; }
@@ -2089,6 +2126,20 @@
             .fl-setting-row-click:hover .fl-setting-row-name { color: ${color}; }
             .fl-setting-row-click:hover::after { color: ${color}; }
             .fl-setting-tip-text { font-size: 11px; color: #6b7078; line-height: 1.7; margin-top: 10px; text-align: left; }
+            .fl-idm-field { position: relative; flex: 1; display: flex; }
+            .fl-idm-bubble { position: absolute; left: 0; top: calc(100% + 8px); z-index: 20; display: inline-flex; align-items: center; gap: 7px; width: max-content; max-width: 260px; padding: 9px 13px; border-radius: 10px; background: #514226; color: #f4f6fa; font-size: 12.5px; line-height: 1.45; letter-spacing: .01em; text-align: left; box-shadow: 0 0 0 3px #fff, 0 8px 24px rgba(60, 40, 10, .22); opacity: 0; transform: translateY(-3px); pointer-events: none; transition: opacity .2s cubic-bezier(.16, 1, .3, 1), transform .2s cubic-bezier(.16, 1, .3, 1); }
+            .fl-idm-bubble-icon { flex: 0 0 auto; display: block; }
+            .fl-idm-bubble::before { content: ''; position: absolute; left: 14px; top: -6px; border: 6px solid transparent; border-top: 0; border-bottom-color: #514226; }
+            .fl-idm-bubble.fl-shown { opacity: 1; transform: translateY(0); }
+            @keyframes fl-idm-shake {
+                0%, 100% { transform: translate3d(0, 0, 0); }
+                15% { transform: translate3d(-3px, 0, 0); }
+                30% { transform: translate3d(3px, 0, 0); }
+                45% { transform: translate3d(-2px, 0, 0); }
+                60% { transform: translate3d(2px, 0, 0); }
+                75% { transform: translate3d(-1px, 0, 0); }
+            }
+            .fl-idm-bubble.is-shake { animation: fl-idm-shake .34s cubic-bezier(.36, .07, .19, .97) 1; }
             .fl-setting-help { font-size: 12px; color: #6b7078; margin-top: 8px; text-align: center; }
             /* 同 .fl-dl-help a：设置页这行也是文字加链接混排，一样要挡宿主样式 */
             .fl-setting-help a { color: ${color}; text-decoration: none; font: inherit; vertical-align: baseline; }
