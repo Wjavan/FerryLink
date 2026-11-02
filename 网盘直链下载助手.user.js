@@ -790,7 +790,7 @@
         showIDMSetting(fromSetting) {
             const idmId = base._idmId();
             const dom = `<div>
-                <label class="fl-setting-label"><div class="fl-label">客户端 ID</div><input type="text" placeholder="IDM 多配置时的客户端编号，默认 1" class="fl-input listener-idm-id" value="${base.esc(idmId)}"></label>
+                <label class="fl-setting-label"><div class="fl-label">客户端 ID</div><span class="fl-idm-field"><input type="text" placeholder="IDM 多配置时的客户端编号，默认 1" class="fl-input listener-idm-id" aria-describedby="fl-idm-tip" value="${base.esc(idmId)}"><span class="fl-idm-bubble" id="fl-idm-tip" role="tooltip"><svg class="fl-idm-bubble-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="7" fill="#f2c14e"/><path d="M8 4.2v4.4" stroke="#1f2533" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.3" r=".95" fill="#1f2533"/></svg>仅接受数字，其它字符自动过滤</span></span></label>
                 <div class="fl-setting-tip-text">Client ID 是 IDM 用来区分不同浏览器捕获扩展的编号，多浏览器需各配一个，填错会导致推送失败，一般保持默认 1 即可。取值方法：浏览器进入 IDM 扩展的「管理扩展/调试附加组件」检查视图，在 DevTools 的「应用程序/存储 → 扩展存储 → 本地」里找 client 对应的数字。</div>
             </div>`;
             Swal.fire({
@@ -893,9 +893,13 @@
             doc.on('input', '.listener-dir', async (e) => {
                 base.setValue('setting_rpc_dir', e.target.value);
             });
+            doc.on('focusin focusout', '.listener-idm-id', (e) => {
+                $(e.target).closest('.fl-idm-field').toggleClass('fl-shown', e.type === 'focusin');
+            });
             doc.on('input', '.listener-idm-id', async (e) => {
-                const t = (e.target.value || '').trim();
-                if (base._isIdmId(t)) base.setValue('setting_idm_rpc', [{ id: t, default: true }]);
+                const el = e.target, digits = (el.value || '').replace(/\D+/g, '');
+                if (digits !== el.value) el.value = digits;
+                if (digits !== '') base.setValue('setting_idm_rpc', [{ id: digits, default: true }]);
             });
             doc.on('change', '.listener-idm-id', async (e) => {
                 const t = (e.target.value || '').trim();
@@ -1997,6 +2001,7 @@
             .fl-setting-row-click::after { color: #8b8e93; }
             .fl-setting-row-click:hover::after { color: ${color}; }
             .fl-label { color: #e8eaed; }
+            .fl-idm-bubble { box-shadow: 0 0 0 3px #1d1e1f, 0 8px 24px rgba(0, 0, 0, .45); }
             .fl-input { background: #2a2b2c; border-color: #3f4041; color: #e8eaed; }
             .fl-input::placeholder { color: #6b6e73; }
             .fl-color-box { border-color: #3f4041; }
@@ -2099,6 +2104,11 @@
             .fl-setting-row-click:hover .fl-setting-row-name { color: ${color}; }
             .fl-setting-row-click:hover::after { color: ${color}; }
             .fl-setting-tip-text { font-size: 11px; color: #6b7078; line-height: 1.7; margin-top: 10px; text-align: left; }
+            .fl-idm-field { position: relative; flex: 1; display: flex; }
+            .fl-idm-bubble { position: absolute; left: 0; top: calc(100% + 8px); z-index: 20; display: inline-flex; align-items: center; gap: 7px; width: max-content; max-width: 260px; padding: 9px 13px; border-radius: 10px; background: #514226; color: #f4f6fa; font-size: 12.5px; line-height: 1.45; letter-spacing: .01em; text-align: left; box-shadow: 0 0 0 3px #fff, 0 8px 24px rgba(60, 40, 10, .22); opacity: 0; transform: translateY(-3px); pointer-events: none; transition: opacity .2s cubic-bezier(.16, 1, .3, 1), transform .2s cubic-bezier(.16, 1, .3, 1); }
+            .fl-idm-bubble-icon { flex: 0 0 auto; display: block; }
+            .fl-idm-bubble::before { content: ''; position: absolute; left: 14px; top: -6px; border: 6px solid transparent; border-top: 0; border-bottom-color: #514226; }
+            .fl-idm-field.fl-shown .fl-idm-bubble { opacity: 1; transform: translateY(0); }
             .fl-setting-help { font-size: 12px; color: #6b7078; margin-top: 8px; text-align: center; }
             /* 同 .fl-dl-help a：设置页这行也是文字加链接混排，一样要挡宿主样式 */
             .fl-setting-help a { color: ${color}; text-decoration: none; font: inherit; vertical-align: baseline; }
