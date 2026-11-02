@@ -261,6 +261,7 @@
                 const hit = spec.list.find(v => v.toLowerCase() === s);
                 return hit || base.settingChoiceDefault(key);
             }
+            // 数组型设置目前只有 IDM 编号，id 只收正整数
             const ok = Array.isArray(raw) && raw.length > 0 && raw.every(i => i && typeof i === 'object' && base._idmIdNorm(i.id) !== '');
             // 旧值可能带空格、前导零或是数字型，取用时统一成规范后的字符串
             return ok ? raw.map(i => ({ ...i, id: base._idmIdNorm(i.id) })) : base.settingChoiceDefault(key);
@@ -906,7 +907,10 @@
                     void bubble[0].offsetWidth;
                     bubble.addClass('is-shake');
                     clearTimeout(bubble.data('hide'));
-                    bubble.data('hide', setTimeout(() => bubble.removeClass('fl-shown'), 2400));
+                    bubble.data('hide', setTimeout(() => {
+                        bubble.removeClass('fl-shown');
+                        el.removeAttribute('aria-invalid');
+                    }, 2400));
                     return;
                 }
                 el.removeAttribute('aria-invalid');
@@ -918,6 +922,7 @@
             doc.on('change', '.listener-idm-id', async (e) => {
                 const v = base._idmIdNorm(e.target.value) || '1';
                 e.target.dataset.idm = v;
+                e.target.removeAttribute('aria-invalid');
                 e.target.value = v;
                 base.setValue('setting_idm_rpc', [{ id: v, default: true }]);
             });
