@@ -62,6 +62,7 @@ jobs:
           if size > LIMIT:
               note('error', '文件 %d 字节，超过 GreasyFork 的 2 MB 上限' % size)
           header = []
+          raw_header = []
           code = []
           inside = saw_start = saw_end = False
           for line in text.splitlines():
@@ -76,6 +77,7 @@ jobs:
               if inside:
                   if s.startswith('//'):
                       header.append(s[2:].strip())
+                      raw_header.append(line)
                   continue
               if s.startswith('//'):
                   continue
@@ -102,8 +104,8 @@ jobs:
               note('error', '缺少 @name')
           if not match:
               note('error', '缺少 @match')
-          # release.yml 用行首的 // @version 抠版本，这里必须认同一份写法
-          release_ver = re.search(r'(?m)^// @version[ \t]+([0-9][0-9.]*)', text)
+          # 发版按行首的 // @version 取值，此处须与其一致
+          release_ver = re.search(r'(?m)^// @version[ \t]+([0-9][0-9.]*)', '\n'.join(raw_header))
           if not version:
               note('error', '缺少 @version')
           elif len(version) > 1:
@@ -124,7 +126,7 @@ jobs:
               if not re.fullmatch(r'https://\S+', r):
                   note('error', '@require 必须是单个 https 地址：「%s」' % r)
 
-          # 这两行决定用户从哪拿更新，指向别处等于把更新权交出去
+          # 更新来源固定为 GreasyFork，指向他处视为篡改
           for key, want in (('@updateURL', UPDATE_URL), ('@downloadURL', DOWNLOAD_URL)):
               vals = values(key)
               if len(vals) != 1:
@@ -135,7 +137,7 @@ jobs:
           # 扫描前剥离块注释；字符串内的名称仍计入
           body = re.sub(r'/\*.*?\*/', '', '\n'.join(code), flags=re.S)
           grants = set(grant)
-          # 头没收尾时后面全被当成头部，代码扫描没有意义
+          # 头部未闭合时代码区为空，跳过接口扫描
           if saw_end:
               used = set(re.findall(r'\bGM_[A-Za-z]\w*', body))
               used |= {'GM.' + m for m in re.findall(r'\bGM\.([A-Za-z]\w*)', body)}
@@ -155,7 +157,7 @@ jobs:
 
 
   lint:
-    # workflow 检查要下载第三方二进制，不放进发版门禁
+    # 该任务需下载外部二进制，不参与发版检查
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -179,6 +181,6 @@ jobs:
 
       - name: workflow 检查
         run: |
-          # 检查工具由镜像预装，缺了会静默跳过 shell 检查，宁可当场失败
+          # 校验工具由镜像提供，缺失时直接失败而非跳过
           command -v shellcheck >/dev/null || { echo "::error::镜像里没有 shellcheck，workflow 检查不完整"; exit 1; }
           "$RUNNER_TEMP/actionlint"
