@@ -28,30 +28,30 @@ jobs:
           SRC='网盘直链下载助手.user.js'
           LOCK='.github/deps.lock'
 
-          # 指纹表：地址 → SHA256。没登记的只提示，不拦
+          # 锁缺失、地址没登记都算失败：删了锁就全绿的检查没有意义
+          if [ ! -f "$LOCK" ]; then echo "FAIL  缺 $LOCK，每个依赖都要登记指纹"; exit 1; fi
           declare -A PIN=()
-          if [ -f "$LOCK" ]; then
-            while read -r u s; do
-              case "$u" in ''|'#'*) continue ;; esac
-              PIN["$u"]="$s"
-            done < <(tr -d '\r' < "$LOCK")
-          fi
+          while read -r u s; do
+            case "$u" in ''|'#'*) continue ;; esac
+            PIN["$u"]="$s"
+          done < <(tr -d '\r' < "$LOCK")
 
           # 脚本头里声明的全部外部依赖
           mapfile -t urls < <(grep -E '^// *@require[[:space:]]+https?://' "$SRC" \
             | awk '{print $NF}' | tr -d '\r' | sort -u)
           if [ "${#urls[@]}" -eq 0 ]; then echo 'FAIL  脚本头里没抽到依赖'; exit 1; fi
 
-          fail=0; warn=0
+          fail=0
           for u in "${urls[@]}"; do
             tmp="${RUNNER_TEMP:-/tmp}/dep-$$-${RANDOM}.bin"
-            meta=$(curl -sSL --retry 3 --retry-delay 2 --max-time 40 -o "$tmp" \
-                   -w '%{http_code}|%{content_type}' "$u" 2>/dev/null || true)
+            meta=$(curl -sSL --retry 3 --retry-all-errors --retry-delay 2 \
+                   --connect-timeout 10 --max-time 40 -o "$tmp" \
+                   -w '%{http_code}|%{content_type}' "$u" || true)
             code=${meta%%|*}; ctype=${meta#*|}
             [ -n "$code" ] || code=000
-            size=$(wc -c < "$tmp" 2>/dev/null || echo 0)
+            size=$([ -f "$tmp" ] && wc -c < "$tmp" || echo 0)
             name=$(basename "${u%%\?*}")
-            v='–'; bad=0; unreg=0
+            v='–'; bad=0
 
             if [ "$code" != 200 ]; then
               echo "FAIL  $name  HTTP $code"; bad=1
@@ -62,14 +62,15 @@ jobs:
                 *html*) echo "FAIL  $name  返回的是网页不是文件（$ctype）"; bad=1 ;;
               esac
               v=$(sed -nE 's#.*/([0-9]+\.[0-9]+\.[0-9]+)/.*#\1#p' <<<"$u")
-              if [ -n "$v" ] && ! grep -q "$v" "$tmp"; then
+              if [ -n "$v" ] && ! grep -Fq -- "$v" "$tmp"; then
                 echo "FAIL  $name  内容里找不到版本号 $v"; bad=1
               fi
               got=$(sha256sum "$tmp" | cut -d' ' -f1)
               want="${PIN[$u]:-}"
               if [ -z "$want" ]; then
-                unreg=1
-                warn=$((warn + 1))
+                echo "FAIL  $name  未登记指纹，把这行加进 $LOCK："
+                echo "      $u $got"
+                bad=1
               elif [ "$got" != "$want" ]; then
                 echo "FAIL  $name  内容被替换（期望 ${want:0:16}… 实际 ${got:0:16}…）"
                 bad=1
@@ -78,13 +79,21 @@ jobs:
 
             if [ "$bad" -ne 0 ]; then
               fail=$((fail + 1))
-            elif [ "$unreg" -eq 1 ]; then
-              printf 'WARN  %-34s %-9s %8s 字节  未登记指纹，内容未核对\n' "$name" "$v" "$size"
             else
               printf 'PASS  %-34s %-9s %8s 字节\n' "$name" "$v" "$size"
             fi
             rm -f "$tmp"
           done
 
-          echo "依赖 ${#urls[@]} 个，失败 $fail，未登记 $warn"
+          # 锁里登记过、脚本头已经不要的地址，留着只会越来越脏
+          for u in "${!PIN[@]}"; do
+            keep=0
+            for x in "${urls[@]}"; do [ "$x" = "$u" ] && { keep=1; break; }; done
+            if [ "$keep" -eq 0 ]; then
+              echo "FAIL  锁里这条已不在 @require，删掉它：$u"
+              fail=$((fail + 1))
+            fi
+          done
+
+          echo "依赖 ${#urls[@]} 个，失败 $fail"
           [ "$fail" -eq 0 ]
