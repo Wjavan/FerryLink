@@ -37,6 +37,8 @@ jobs:
 
           SRC = pathlib.Path('网盘直链下载助手.user.js')
           LIMIT = 2 * 1024 * 1024
+          UPDATE_URL = 'https://update.greasyfork.org/scripts/595544/FerryLink.meta.js'
+          DOWNLOAD_URL = 'https://update.greasyfork.org/scripts/595544/FerryLink.user.js'
           CI = os.environ.get('GITHUB_ACTIONS') == 'true'
           fails = []
 
@@ -122,16 +124,15 @@ jobs:
               if not re.fullmatch(r'https://\S+', r):
                   note('error', '@require 必须是单个 https 地址：「%s」' % r)
 
-          # 这两行决定用户怎么拿到更新，缺了就不再更新
-          for key in ('@updateURL', '@downloadURL'):
+          # 这两行决定用户从哪拿更新，指向别处等于把更新权交出去
+          for key, want in (('@updateURL', UPDATE_URL), ('@downloadURL', DOWNLOAD_URL)):
               vals = values(key)
-              if not vals:
-                  note('error', '缺少 %s，用户拿不到更新' % key)
-              for v in vals:
-                  if not re.fullmatch(r'https://\S+', v):
-                      note('error', '%s 必须是单个 https 地址：「%s」' % (key, v))
+              if len(vals) != 1:
+                  note('error', '%s 必须恰好出现一次，当前 %d 次' % (key, len(vals)))
+              elif vals[0] != want:
+                  note('error', '%s 必须指向 %s，当前是「%s」' % (key, want, vals[0]))
 
-          # 只忽略 // 行注释；块注释里提到 GM_ 会被当成使用
+          # 去掉块注释再扫；字符串里出现的 GM_ 仍会被算进来
           body = re.sub(r'/\*.*?\*/', '', '\n'.join(code), flags=re.S)
           grants = set(grant)
           # 头没收尾时后面全被当成头部，代码扫描没有意义
