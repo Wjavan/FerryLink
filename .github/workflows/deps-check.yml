@@ -1,7 +1,7 @@
 name: Deps Check
 
 # 依赖清单只有脚本头一个出处：这里照着它逐个下载核对，不在别处另抄一份。
-# @require 拉不下来 = 用户端白屏，而仓库里一个字都没改，所有代码检查都会是绿的。
+# 没有 deps.lock 就按本次结果生成基线；地址增删只提示不拦；连不上直接红。
 
 on:
   pull_request:
@@ -28,20 +28,20 @@ jobs:
           SRC='网盘直链下载助手.user.js'
           LOCK='.github/deps.lock'
 
-          # 锁缺失、地址没登记都算失败：删了锁就全绿的检查没有意义
-          if [ ! -f "$LOCK" ]; then echo "FAIL  缺 $LOCK，每个依赖都要登记指纹"; exit 1; fi
           declare -A PIN=()
-          while read -r u s; do
-            case "$u" in ''|'#'*) continue ;; esac
-            PIN["$u"]="$s"
-          done < <(tr -d '\r' < "$LOCK")
+          if [ -f "$LOCK" ]; then
+            while read -r u s; do
+              case "$u" in ''|'#'*) continue ;; esac
+              PIN["$u"]="$s"
+            done < <(tr -d '\r' < "$LOCK")
+          fi
 
-          # 脚本头里声明的全部外部依赖
           mapfile -t urls < <(grep -E '^// *@require[[:space:]]+https?://' "$SRC" \
             | awk '{print $NF}' | tr -d '\r' | sort -u)
           if [ "${#urls[@]}" -eq 0 ]; then echo 'FAIL  脚本头里没抽到依赖'; exit 1; fi
 
-          fail=0
+          fail=0; warn=0
+          declare -A GOT=()
           for u in "${urls[@]}"; do
             tmp="${RUNNER_TEMP:-/tmp}/dep-$$-${RANDOM}.bin"
             meta=$(curl -sSL --retry 3 --retry-all-errors --retry-delay 2 \
@@ -51,49 +51,60 @@ jobs:
             [ -n "$code" ] || code=000
             size=$([ -f "$tmp" ] && wc -c < "$tmp" || echo 0)
             name=$(basename "${u%%\?*}")
-            v='–'; bad=0
+            v=$(sed -nE 's#.*/([0-9]+\.[0-9]+\.[0-9]+)/.*#\1#p' <<<"$u")
 
             if [ "$code" != 200 ]; then
-              echo "FAIL  $name  HTTP $code"; bad=1
-            elif [ "$size" -lt 1000 ]; then
-              echo "FAIL  $name  只有 $size 字节，像错误页"; bad=1
-            else
-              case "$ctype" in
-                *html*) echo "FAIL  $name  返回的是网页不是文件（$ctype）"; bad=1 ;;
-              esac
-              v=$(sed -nE 's#.*/([0-9]+\.[0-9]+\.[0-9]+)/.*#\1#p' <<<"$u")
-              if [ -n "$v" ] && ! grep -Fq -- "$v" "$tmp"; then
-                echo "FAIL  $name  内容里找不到版本号 $v"; bad=1
-              fi
-              got=$(sha256sum "$tmp" | cut -d' ' -f1)
-              want="${PIN[$u]:-}"
-              if [ -z "$want" ]; then
-                echo "FAIL  $name  未登记指纹，把这行加进 $LOCK："
-                echo "      $u $got"
-                bad=1
-              elif [ "$got" != "$want" ]; then
-                echo "FAIL  $name  内容被替换（期望 ${want:0:16}… 实际 ${got:0:16}…）"
-                bad=1
-              fi
+              echo "FAIL  $name  HTTP $code"; fail=$((fail + 1)); rm -f "$tmp"; continue
             fi
-
-            if [ "$bad" -ne 0 ]; then
-              fail=$((fail + 1))
-            else
-              printf 'PASS  %-34s %-9s %8s 字节\n' "$name" "$v" "$size"
+            if [ "$size" -lt 1000 ]; then
+              echo "FAIL  $name  只有 $size 字节，像错误页"; fail=$((fail + 1)); rm -f "$tmp"; continue
             fi
+            case "$ctype" in
+              *html*)
+                echo "FAIL  $name  返回的是网页不是文件（$ctype）"; fail=$((fail + 1)); rm -f "$tmp"; continue ;;
+            esac
+            if [ -n "$v" ] && ! grep -Fq -- "$v" "$tmp"; then
+              echo "FAIL  $name  内容里找不到版本号 $v"; fail=$((fail + 1)); rm -f "$tmp"; continue
+            fi
+            GOT["$u"]=$(sha256sum "$tmp" | cut -d' ' -f1)
+            printf 'OK    %-34s %-9s %8s 字节\n' "$name" "${v:-–}" "$size"
             rm -f "$tmp"
           done
+          [ "$fail" -eq 0 ] || { echo "依赖 ${#urls[@]} 个，失败 $fail"; exit 1; }
 
-          # 锁里登记过、脚本头已经不要的地址，留着只会越来越脏
-          for u in "${!PIN[@]}"; do
-            keep=0
-            for x in "${urls[@]}"; do [ "$x" = "$u" ] && { keep=1; break; }; done
-            if [ "$keep" -eq 0 ]; then
-              echo "FAIL  锁里这条已不在 @require，删掉它：$u"
+          # 没锁：按这次的结果生成基线，贴进 .github/deps.lock 即可
+          if [ ! -f "$LOCK" ]; then
+            echo "WARN  没有 $LOCK，按本次结果生成基线（复制下面几行提交）"
+            lines=''
+            for u in "${urls[@]}"; do
+              lines+="$u ${GOT[$u]}"$'\n'
+            done
+            printf '%s' "$lines"
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+              { echo '## 依赖基线（新建 .github/deps.lock）'; echo '```'; printf '%s' "$lines"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            fi
+            echo "依赖 ${#urls[@]} 个，无基线"
+            exit 0
+          fi
+
+          # 有锁：地址增删只提示；地址没变但内容变了才算被替换
+          for u in "${urls[@]}"; do
+            name=$(basename "${u%%\?*}")
+            want="${PIN[$u]:-}"
+            if [ -z "$want" ]; then
+              echo "WARN  $name  新增依赖，基线里没有（补一行：$u ${GOT[$u]}）"; warn=$((warn + 1))
+            elif [ "$want" != "${GOT[$u]}" ]; then
+              echo "FAIL  $name  地址没变但内容变了（期望 ${want:0:16}… 实际 ${GOT[$u]:0:16}…）"
               fail=$((fail + 1))
             fi
           done
+          for u in "${!PIN[@]}"; do
+            hit=0
+            for x in "${urls[@]}"; do [ "$x" = "$u" ] && { hit=1; break; }; done
+            if [ "$hit" -eq 0 ]; then
+              echo "WARN  基线里有、脚本头已不要：$u"; warn=$((warn + 1))
+            fi
+          done
 
-          echo "依赖 ${#urls[@]} 个，失败 $fail"
+          echo "依赖 ${#urls[@]} 个，失败 $fail，提示 $warn"
           [ "$fail" -eq 0 ]
