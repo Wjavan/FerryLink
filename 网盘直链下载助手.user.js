@@ -318,9 +318,9 @@
                     { grant_type: 'refresh_token', refresh_token: tk.refresh_token },
                     { 'content-type': 'application/json;charset=utf-8' }
                 );
-                // 秒数会被当成年份，超两年按 2 小时算
+                // 秒数会被当成年份，超出一天就按 2 小时算
                 let expAt = Date.parse(res.expire_time || '');
-                if (!(expAt > now && expAt < now + 7.3e11)) expAt = now + 7200000;
+                if (!(expAt > now && expAt < now + 86400000)) expAt = now + 7200000;
                 const merged = Object.assign({}, tk, {
                     access_token: res.access_token,
                     refresh_token: res.refresh_token || tk.refresh_token,
@@ -369,13 +369,13 @@
                     },
         getExtension(name) {
             let s = String(name == null ? '' : name);
-            let m = /\.([A-Za-z0-9]{1,8})$/.exec(s);
+            let m = /\.([A-Za-z0-9_]{1,16})$/.exec(s);
             if (!m || s.length === m[0].length) return '';   // 只有点没有主名的不算
             return m[1].toUpperCase();
         },
         sizeFormat(value) {
             if (value === +value) {
-                if (!(value > 0)) return '0B';                  // log(0) 是负无穷，算出来的单位是 undefined
+                if (!(value >= 1)) return '0B';                 // 小于 1 字节时 log 为负，单位下标算出 undefined
                 let unit = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
                 let index = Math.floor(Math.log(value) / Math.log(1024));
                 let size = value / Math.pow(1024, index);
@@ -1669,12 +1669,18 @@
                     },
                     onload: (r) => {
                         const want = end - start + 1;
-                        // 200 表示没按 Range 切；长度对得上才算这一块
+                        // 长度与起点都对得上才算这一块，短读拼进去就是坏文件
                         const len = (r.response && (r.response.byteLength !== undefined ? r.response.byteLength : r.response.length)) || 0;
-                        if (r.status === 206) { got[idx] = want; report(); finish({ ok: true, buf: r.response }); }
-                        else if (r.status === 200 && len === want) { got[idx] = want; report(); finish({ ok: true, buf: r.response }); }
-                        else if (r.status === 200) finish({ ok: false, why: '服务器不支持分段（返回整个文件）' });
-                        else finish({ ok: false, why: 'HTTP ' + r.status });
+                        const cr = /content-range:\s*bytes\s+(\d+)-/i.exec(r.responseHeaders || '');
+                        if (r.status === 206 && len === want && (!cr || Number(cr[1]) === start)) {
+                            got[idx] = want; report(); finish({ ok: true, buf: r.response });
+                        } else if (r.status === 206) {
+                            finish({ ok: false, why: '分块位置或长度不符（应为 ' + want + ' 字节）' });
+                        } else if (r.status === 200 && len === want) {
+                            got[idx] = want; report(); finish({ ok: true, buf: r.response });
+                        } else if (r.status === 200) {
+                            finish({ ok: false, why: '服务器不支持分段（返回整个文件）' });
+                        } else finish({ ok: false, why: 'HTTP ' + r.status });
                     },
                     onerror: () => finish({ ok: false, why: '网络错误' }),
                     ontimeout: () => finish({ ok: false, why: '超时' }),
@@ -3232,7 +3238,6 @@
         _smartListen(callback) {
             const checkInterval = 500;
             function check() {
-                if ($('.fl-button').length) return;   // 按钮已挂上，不必再轮询
                 setTimeout(check, checkInterval);
                 callback();
             }
@@ -3775,7 +3780,7 @@
                 try { vueDom = document.querySelector('.home-page').__vue__ || null; } catch (e) { }
                 let linkId = (vueDom && vueDom.linkID) || '';
                 if (!linkId) return { index, downloadUrl: '读不到移动云盘 linkID，请刷新页面后重试' };
-                let res = await base.post(panInfo.pcs[1], `linkId=${linkId}&contentIds=${encodeURIComponent(item.path)}&catalogIds=`, {
+                let res = await base.post(panInfo.pcs[1], `linkId=${encodeURIComponent(linkId)}&contentIds=${encodeURIComponent(item.path)}&catalogIds=`, {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     });
                     if (res.code === 0) {
@@ -4192,11 +4197,17 @@
                 return this._fileRow({ file_name: this._name(it), file_size: it.size || it.file_size || it.size_bytes }, link, it);
             });
             if (list.every(f => !f.dlink || this._deadLink(f.dlink))) {
-                // 签名参数等于临时凭证，回显前把 query 掐掉
-                let raw = String(JSON.stringify(this._lastFetch || this._lastList || dl || {})).replace(/https?:\/\/[^\s"']+/g, (u) => {
-                    let q = u.indexOf('?');
-                    return q > 0 ? u.slice(0, q) + '?…' : u;
-                }).slice(0, 200);
+                // 签名与请求头都算临时凭证，回显前按字段打码
+                let raw = String(JSON.stringify(this._lastFetch || this._lastList || dl || {}, (k, v) => {
+                    if (typeof v === 'string') {
+                        if (/^(download_sign|sign|authorization|cookie|token|download_url|downurl)$/i.test(k)) return '…';
+                        return v.replace(/https?:\/\/[^\s"']+/g, (u) => {
+                            let q = u.indexOf('?');
+                            return q > 0 ? u.slice(0, q) + '?…' : u;
+                        });
+                    }
+                    return v;
+                })).slice(0, 200);
                 return base.renderErrorPanel('城通个人网盘取不到可用地址。接口原文：' + raw, this);
             }
             base.renderDownloadPanel(list, this);
