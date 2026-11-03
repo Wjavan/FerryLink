@@ -155,6 +155,6 @@ jobs:
 
       - name: workflow 检查
         run: |
-          # shellcheck 由镜像预装，缺了会静默跳过 shell 检查，宁可当场失败
+          # 检查工具由镜像预装，缺了会静默跳过 shell 检查，宁可当场失败
           command -v shellcheck >/dev/null || { echo "::error::镜像里没有 shellcheck，workflow 检查不完整"; exit 1; }
           "$RUNNER_TEMP/actionlint"
