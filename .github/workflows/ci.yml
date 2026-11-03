@@ -122,6 +122,15 @@ jobs:
               if not re.fullmatch(r'https://\S+', r):
                   note('error', '@require 必须是单个 https 地址：「%s」' % r)
 
+          # 这两行决定用户怎么拿到更新，缺了就不再更新
+          for key in ('@updateURL', '@downloadURL'):
+              vals = values(key)
+              if not vals:
+                  note('error', '缺少 %s，用户拿不到更新' % key)
+              for v in vals:
+                  if not re.fullmatch(r'https://\S+', v):
+                      note('error', '%s 必须是单个 https 地址：「%s」' % (key, v))
+
           # 只忽略 // 行注释；块注释里提到 GM_ 会被当成使用
           body = re.sub(r'/\*.*?\*/', '', '\n'.join(code), flags=re.S)
           grants = set(grant)
