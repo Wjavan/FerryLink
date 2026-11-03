@@ -1,0 +1,148 @@
+name: Deps Check
+
+# 依赖清单只有脚本头一个出处：这里照着它逐个下载核对，不在别处另抄一份。
+# 没有 deps.lock 就按本次结果生成基线；地址增删只提示不拦；连不上、锁格式坏直接红。
+
+on:
+  pull_request:
+    paths:
+      - '网盘直链下载助手.user.js'
+      - '.github/deps.lock'
+      - '.github/workflows/deps-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deps-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 逐个下载核对
+        shell: bash
+        run: |
+          set -uo pipefail
+          SRC='网盘直链下载助手.user.js'
+          LOCK='.github/deps.lock'
+          SUMMARY="${GITHUB_STEP_SUMMARY:-}"
+
+          fail=0; warn=0; n_urls=0
+          # 在 Actions 里发注解（页面显示黄/红条），本地跑打普通行，避免一条信息出现两遍
+          on_fail() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::error::$*"; else echo "FAIL  $*"; fi; fail=$((fail + 1)); }
+          on_warn() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::warning::$*"; else echo "WARN  $*"; fi; warn=$((warn + 1)); }
+          to_summary() { [ -z "$SUMMARY" ] || printf '%s\n' "$*" >> "$SUMMARY"; }
+          # 失败出口也要留摘要，否则最该看的红跑反而没有汇总
+          finish() {
+            echo "依赖 $n_urls 个，失败 $fail，提示 $warn"
+            to_summary "依赖 $n_urls 个，失败 $fail，提示 $warn"
+            exit "$1"
+          }
+
+          # 脚本头里声明的全部外部依赖
+          mapfile -t urls < <(tr -d '\r' < "$SRC" \
+            | sed -nE 's#^// *@require[[:space:]]+(https?://[^[:space:]]+).*#\1#p' | sort -u)
+          n_urls=${#urls[@]}
+          if [ "$n_urls" -eq 0 ]; then on_fail '脚本头里没抽到依赖'; finish 1; fi
+
+          declare -A PIN=()
+          if [ -f "$LOCK" ]; then
+            n=0
+            while read -r u s rest; do
+              n=$((n + 1))
+              case "$u" in ''|'#'*) continue ;; esac
+              if [ -z "$s" ] || [ -n "$rest" ] || ! [[ "$s" =~ ^[0-9a-f]{64}$ ]]; then
+                on_fail "$LOCK 第 $n 行要『地址 + 空格 + 64 位 sha256』：$u"
+                finish 1
+              fi
+              PIN["$u"]="$s"
+            done < <(tr -d '\r' < "$LOCK")
+          fi
+
+          # 版本号两种写法都认：/1.2.3/ 与 @1.2.3/
+          ver_of() {
+            local u="$1" v
+            v=$(sed -nE 's#.*/([0-9]+\.[0-9]+\.[0-9]+)/.*#\1#p' <<<"$u")
+            [ -n "$v" ] || v=$(sed -nE 's#.*@([0-9]+\.[0-9]+\.[0-9]+)(/.*)?$#\1#p' <<<"$u")
+            printf '%s' "$v"
+          }
+
+          declare -A GOT=()
+          for u in "${urls[@]}"; do
+            tmp="${RUNNER_TEMP:-/tmp}/dep-$$-${RANDOM}.bin"
+            errf="${RUNNER_TEMP:-/tmp}/dep-err-$$-${RANDOM}.txt"
+            rc=0
+            meta=$(curl -sSL --proto '=https' --proto-redir '=https' --max-filesize 5242880 \
+                   --retry 3 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 40 \
+                   -o "$tmp" -w '%{http_code}|%{content_type}' "$u" 2>"$errf") || rc=$?
+            name=$(basename "${u%%\?*}")
+            # 传输中断时 -w 仍会打 200，半截文件不能进基线，必须看退出码
+            if [ "$rc" -ne 0 ]; then
+              on_fail "$name  下载失败（curl $rc）：$(head -c 200 "$errf" | tr '\n' ' ')"
+              rm -f "$tmp" "$errf"; continue
+            fi
+            code=${meta%%|*}; ctype=${meta#*|}
+            [ -n "$code" ] || code=000
+            size=$([ -f "$tmp" ] && wc -c < "$tmp" || echo 0)
+            v=$(ver_of "$u")
+
+            if [ "$code" != 200 ]; then
+              on_fail "$name  HTTP $code"; rm -f "$tmp" "$errf"; continue
+            fi
+            if [ "$size" -lt 1000 ]; then
+              on_fail "$name  只有 $size 字节，像错误页"; rm -f "$tmp" "$errf"; continue
+            fi
+            case "$ctype" in
+              *html*) on_fail "$name  返回的是网页不是文件（$ctype）"; rm -f "$tmp" "$errf"; continue ;;
+            esac
+            if [ -z "$v" ]; then
+              on_warn "$name  地址里认不出版本号，跳过版本核对"
+            elif ! grep -Fq -- "$v" "$tmp"; then
+              on_fail "$name  内容里找不到版本号 $v"; rm -f "$tmp" "$errf"; continue
+            fi
+            GOT["$u"]=$(sha256sum "$tmp" | cut -d' ' -f1)
+            printf 'OK    %-34s %-9s %8s 字节\n' "$name" "${v:-–}" "$size"
+            rm -f "$tmp" "$errf"
+          done
+          [ "$fail" -eq 0 ] || finish 1
+
+          # 没锁：按这次的结果生成基线，贴进 .github/deps.lock 即可
+          if [ ! -f "$LOCK" ]; then
+            on_warn "没有 $LOCK，按本次结果生成基线"
+            lines=''
+            for u in "${urls[@]}"; do
+              lines+="$u ${GOT[$u]}"$'\n'
+            done
+            printf '%s' "$lines"
+            to_summary '## 依赖基线（新建 .github/deps.lock）'
+            to_summary '```'
+            to_summary "$lines"
+            to_summary '```'
+            finish 0
+          fi
+
+          # 有锁：地址增删只提示；地址没变但内容变了才算被替换
+          for u in "${urls[@]}"; do
+            name=$(basename "${u%%\?*}")
+            want="${PIN[$u]:-}"
+            if [ -z "$want" ]; then
+              on_warn "$name  新增依赖，基线里没有（补一行：$u ${GOT[$u]}）"
+            elif [ "$want" != "${GOT[$u]}" ]; then
+              on_fail "$name  地址没变但内容变了（期望 ${want:0:12}…${want: -4}，实际 ${GOT[$u]:0:12}…${GOT[$u]: -4}）"
+            fi
+          done
+          for u in "${!PIN[@]}"; do
+            hit=0
+            for x in "${urls[@]}"; do [ "$x" = "$u" ] && { hit=1; break; }; done
+            if [ "$hit" -eq 0 ]; then on_warn "基线里有、脚本头已不要：$u"; fi
+          done
+
+          if [ "$fail" -eq 0 ]; then finish 0; else finish 1; fi
