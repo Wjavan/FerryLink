@@ -50,7 +50,7 @@ body:
     attributes:
       label: 确认
       options:
-        - label: 在最新版本上可以复现
+        - label: 已在最新版本中复现该问题
           required: true
-        - label: 停用其他脚本后仍然复现
+        - label: 停用其他脚本后该问题仍可复现
           required: false
