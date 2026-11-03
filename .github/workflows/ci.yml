@@ -52,24 +52,24 @@ jobs:
               sys.exit(1)
 
           size = len(raw)
-          text = raw.decode('utf-8-sig', errors='replace')
+          try:
+              text = raw.decode('utf-8-sig')
+          except UnicodeDecodeError as e:
+              sys.exit('%s 不是合法的 UTF-8：%s' % (SRC.name, e))
 
           if size > LIMIT:
               note('error', '文件 %d 字节，超过 GreasyFork 的 2 MB 上限' % size)
-          end_ok = '// ==/UserScript==' in text
-          if '// ==UserScript==' not in text or not end_ok:
-              note('error', '元数据块缺少 ==UserScript== 起始或结束标记')
-
           header = []
           code = []
-          inside = False
+          inside = saw_start = saw_end = False
           for line in text.splitlines():
               s = line.strip()
               if s.startswith('// ==UserScript=='):
-                  inside = True
+                  inside = saw_start = True
                   continue
               if s.startswith('// ==/UserScript=='):
                   inside = False
+                  saw_end = True
                   continue
               if inside:
                   if s.startswith('//'):
@@ -78,6 +78,10 @@ jobs:
               if s.startswith('//'):
                   continue
               code.append(line)
+
+          end_ok = saw_end
+          if not (saw_start and saw_end):
+              note('error', '元数据块缺少 ==UserScript== 起始或结束标记')
 
           def values(key):
               out = []
