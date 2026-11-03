@@ -21,7 +21,7 @@ concurrency:
 jobs:
   deps:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -39,7 +39,7 @@ jobs:
           # 在 Actions 里发注解（页面显示黄/红条），本地跑打普通行，避免一条信息出现两遍
           on_fail() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::error::$*"; else echo "FAIL  $*"; fi; fail=$((fail + 1)); }
           on_warn() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::warning::$*"; else echo "WARN  $*"; fi; warn=$((warn + 1)); }
-          to_summary() { [ -n "$SUMMARY" ] && printf '%s\n' "$*" >> "$SUMMARY"; }
+          to_summary() { [ -z "$SUMMARY" ] || printf '%s\n' "$*" >> "$SUMMARY"; }
 
           declare -A PIN=()
           if [ -f "$LOCK" ]; then
@@ -48,17 +48,16 @@ jobs:
               n=$((n + 1))
               case "$u" in ''|'#'*) continue ;; esac
               if [ -z "$s" ] || [ -n "$rest" ] || ! [[ "$s" =~ ^[0-9a-f]{64}$ ]]; then
-                echo "::error::$LOCK 第 $n 行格式不对"
-                echo "FAIL  $LOCK 第 $n 行要『地址 + 空格 + 64 位 sha256』：$u"
+                on_fail "$LOCK 第 $n 行要『地址 + 空格 + 64 位 sha256』：$u"
                 exit 1
               fi
               PIN["$u"]="$s"
             done < <(tr -d '\r' < "$LOCK")
           fi
 
-          mapfile -t urls < <(grep -E '^// *@require[[:space:]]+https?://' "$SRC" \
-            | awk '{print $NF}' | tr -d '\r' | sort -u)
-          if [ "${#urls[@]}" -eq 0 ]; then echo 'FAIL  脚本头里没抽到依赖'; exit 1; fi
+          mapfile -t urls < <(tr -d '\r' < "$SRC" \
+            | sed -nE 's#^// *@require[[:space:]]+(https?://[^[:space:]]+).*#\1#p' | sort -u)
+          if [ "${#urls[@]}" -eq 0 ]; then on_fail '脚本头里没抽到依赖'; exit 1; fi
 
           # 版本号两种写法都认：/1.2.3/ 与 @1.2.3/
           ver_of() {
@@ -71,32 +70,39 @@ jobs:
           declare -A GOT=()
           for u in "${urls[@]}"; do
             tmp="${RUNNER_TEMP:-/tmp}/dep-$$-${RANDOM}.bin"
+            errf="${RUNNER_TEMP:-/tmp}/dep-err-$$-${RANDOM}.txt"
+            rc=0
             meta=$(curl -sSL --proto '=https' --proto-redir '=https' --max-filesize 5242880 \
                    --retry 3 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 40 \
-                   -o "$tmp" -w '%{http_code}|%{content_type}' "$u" || true)
+                   -o "$tmp" -w '%{http_code}|%{content_type}' "$u" 2>"$errf") || rc=$?
+            name=$(basename "${u%%\?*}")
+            # 传输中断时 -w 仍会打 200，半截文件不能进基线，必须看退出码
+            if [ "$rc" -ne 0 ]; then
+              on_fail "$name  下载失败（curl $rc）：$(head -c 200 "$errf" | tr '\n' ' ')"
+              rm -f "$tmp" "$errf"; continue
+            fi
             code=${meta%%|*}; ctype=${meta#*|}
             [ -n "$code" ] || code=000
             size=$([ -f "$tmp" ] && wc -c < "$tmp" || echo 0)
-            name=$(basename "${u%%\?*}")
             v=$(ver_of "$u")
 
             if [ "$code" != 200 ]; then
-              on_fail "$name  HTTP $code"; rm -f "$tmp"; continue
+              on_fail "$name  HTTP $code"; rm -f "$tmp" "$errf"; continue
             fi
             if [ "$size" -lt 1000 ]; then
-              on_fail "$name  只有 $size 字节，像错误页"; rm -f "$tmp"; continue
+              on_fail "$name  只有 $size 字节，像错误页"; rm -f "$tmp" "$errf"; continue
             fi
             case "$ctype" in
-              *html*) on_fail "$name  返回的是网页不是文件（$ctype）"; rm -f "$tmp"; continue ;;
+              *html*) on_fail "$name  返回的是网页不是文件（$ctype）"; rm -f "$tmp" "$errf"; continue ;;
             esac
             if [ -z "$v" ]; then
               on_warn "$name  地址里认不出版本号，跳过版本核对"
             elif ! grep -Fq -- "$v" "$tmp"; then
-              on_fail "$name  内容里找不到版本号 $v"; rm -f "$tmp"; continue
+              on_fail "$name  内容里找不到版本号 $v"; rm -f "$tmp" "$errf"; continue
             fi
             GOT["$u"]=$(sha256sum "$tmp" | cut -d' ' -f1)
             printf 'OK    %-34s %-9s %8s 字节\n' "$name" "${v:-–}" "$size"
-            rm -f "$tmp"
+            rm -f "$tmp" "$errf"
           done
           [ "$fail" -eq 0 ] || { echo "依赖 ${#urls[@]} 个，失败 $fail"; exit 1; }
 
@@ -108,7 +114,7 @@ jobs:
               lines+="$u ${GOT[$u]}"$'\n'
             done
             printf '%s' "$lines"
-            to_summary "## 依赖基线（新建 .github/deps.lock）"
+            to_summary '## 依赖基线（新建 .github/deps.lock）'
             to_summary '```'
             to_summary "$lines"
             to_summary '```'
