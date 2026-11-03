@@ -1672,7 +1672,8 @@
                         // 长度与起点都对得上才算这一块，短读拼进去就是坏文件
                         const len = (r.response && (r.response.byteLength !== undefined ? r.response.byteLength : r.response.length)) || 0;
                         const cr = /content-range:\s*bytes\s+(\d+)-/i.exec(r.responseHeaders || '');
-                        if (r.status === 206 && len === want && (!cr || Number(cr[1]) === start)) {
+                        // 缺 Content-Range 就证明不了偏移，只认「这一块就是整个文件」
+                        if (r.status === 206 && len === want && (cr ? Number(cr[1]) === start : want >= total)) {
                             got[idx] = want; report(); finish({ ok: true, buf: r.response });
                         } else if (r.status === 206) {
                             finish({ ok: false, why: '分块位置或长度不符（应为 ' + want + ' 字节）' });
@@ -4200,7 +4201,7 @@
                 // 签名与请求头都算临时凭证，回显前按字段打码
                 let raw = String(JSON.stringify(this._lastFetch || this._lastList || dl || {}, (k, v) => {
                     if (typeof v === 'string') {
-                        if (/^(download_sign|sign|authorization|cookie|token|download_url|downurl)$/i.test(k)) return '…';
+                        if (/(sign|token|cookie|auth|secret|passwd|credential)/i.test(k)) return '…';
                         return v.replace(/https?:\/\/[^\s"']+/g, (u) => {
                             let q = u.indexOf('?');
                             return q > 0 ? u.slice(0, q) + '?…' : u;
