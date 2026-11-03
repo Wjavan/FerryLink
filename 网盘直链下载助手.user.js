@@ -2765,15 +2765,27 @@
                 ? Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson)
                 : Promise.resolve(base.post(url, body, { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': location.origin }, 'text')).then(toJson);
         },
+        // 列表模块读得到返回勾选项，读不到返回 null，跟「确实没勾」区分开
+        _shareSelected() {
+            let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+            let ctx = null;
+            try { ctx = require('system-core:context/context.js'); } catch (e) { }
+            if (!ctx) { try { ctx = scope.require('system-core:context/context.js'); } catch (e) { } }
+            try { return ctx ? (ctx.instanceForSystem.list.getSelected() || []) : null; } catch (e) { return null; }
+        },
         async _shareLink() {
-            if (selectedFiles.length === 0) { Swal.close(); return base.renderDownloadPanel([], this); }
-            let files = selectedFiles.filter(v => +v.isdir !== 1);
-            if (!files.length) { Swal.close(); return message.error('提示：分享页只支持文件，请勾选文件后再试！'); }
             let ref = this._shareInfo();
             if (!ref.surl) { Swal.close(); return base.renderErrorPanel('读不到分享标识，请刷新页面后重试', this); }
             if (String(ref.info.loginstate) !== '1' || !ref.info.bdstoken) {
                 Swal.close(); return base.renderErrorPanel('分享页下载需要登录百度网盘，请登录后重试', this);
             }
+            let listed = ref.info.file_list || [];
+            let picked = this._shareSelected();
+            if (picked === null) picked = listed;                            // 沙箱里读不到列表模块
+            else if (!picked.length && listed.length === 1) picked = listed;  // 单文件分享页没有勾选框
+            if (!picked.length) { Swal.close(); return base.renderDownloadPanel([], this); }
+            let files = picked.filter(v => v && +v.isdir !== 1);
+            if (!files.length) { Swal.close(); return message.error('提示：分享页只支持文件，请勾选文件后再试！'); }
             let tpl = await this._shareRequest(`${panInfo.pcs[2]}&surl=${ref.surl}&bdstoken=${ref.info.bdstoken}`, 'GET');
             let sign = (tpl && tpl.data) || {};
             if (!sign.sign || !sign.timestamp) {
