@@ -116,8 +116,8 @@ jobs:
                   note('error', '@match 「%s」不是完整的匹配式（需要 scheme://host/path）' % m)
 
           for r in require:
-              if r.startswith('http://'):
-                  note('error', '@require 用了 http：「%s」' % r)
+              if not re.fullmatch(r'https://\S+', r):
+                  note('error', '@require 必须是单个 https 地址：「%s」' % r)
 
           # 只忽略 // 行注释；块注释里提到 GM_ 会被当成使用
           body = re.sub(r'/\*.*?\*/', '', '\n'.join(code), flags=re.S)
@@ -125,9 +125,10 @@ jobs:
           # 头没收尾时后面全被当成头部，代码扫描没有意义
           if end_ok:
               used = set(re.findall(r'\bGM_[A-Za-z]\w*', body))
+              used |= {'GM.' + m for m in re.findall(r'\bGM\.([A-Za-z]\w*)', body)}
               for g in sorted(used - grants):
                   note('error', '代码用到 %s，但 @grant 没有声明' % g)
-              for g in sorted(x for x in grants if x.startswith('GM_')):
+              for g in sorted(x for x in grants if x.startswith('GM_') or x.startswith('GM.')):
                   if g not in used:
                       note('warning', '@grant 声明了 %s，代码里没有用到' % g)
 
@@ -154,10 +155,12 @@ jobs:
         env:
           SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
         run: |
-          set -uo pipefail
+          set -euo pipefail
           url='https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz'
           tmp="$RUNNER_TEMP/actionlint.tar.gz"
-          curl -sSL --retry 3 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 60 -o "$tmp" "$url"
+          curl -fsSL --proto '=https' --proto-redir '=https' \
+            --retry 3 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 60 \
+            -o "$tmp" "$url"
           printf '%s  %s\n' "$SHA256" "$tmp" | sha256sum -c -
           tar -xzf "$tmp" -C "$RUNNER_TEMP" actionlint
 
