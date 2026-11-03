@@ -202,19 +202,19 @@
     });
     const message = {
         success: (text) => {
-            return toast.fire({title: text, icon: 'success'});
+            return toast.fire({titleText: text, icon: 'success'});
         },
         error: (text) => {
-            return toast.fire({title: text, icon: 'error'});
+            return toast.fire({titleText: text, icon: 'error'});
         },
         warning: (text) => {
-            return toast.fire({title: text, icon: 'warning'});
+            return toast.fire({titleText: text, icon: 'warning'});
         },
         info: (text) => {
-            return toast.fire({title: text, icon: 'info'});
+            return toast.fire({titleText: text, icon: 'info'});
         },
         question: (text) => {
-            return toast.fire({title: text, icon: 'question'});
+            return toast.fire({titleText: text, icon: 'question'});
         }
     };
     const LEGACY_LOCAL_KEYS = ['baiduyunPlugin_BDUSS', 'accessToken'];
@@ -318,11 +318,14 @@
                     { grant_type: 'refresh_token', refresh_token: tk.refresh_token },
                     { 'content-type': 'application/json;charset=utf-8' }
                 );
+                // 秒数会被当成年份，超出一天就按 2 小时算
+                let expAt = Date.parse(res.expire_time || '');
+                if (!(expAt > now && expAt < now + 86400000)) expAt = now + 7200000;
                 const merged = Object.assign({}, tk, {
                     access_token: res.access_token,
                     refresh_token: res.refresh_token || tk.refresh_token,
                     token_type: res.token_type || tk.token_type || 'Bearer',
-                    expire_time: new Date(now + (res.expire_time ? Date.parse(res.expire_time) : now + 7200000)).toISOString(),
+                    expire_time: new Date(expAt).toISOString()
                 });
                 base.setStorage('token', merged);
                 return merged;
@@ -365,15 +368,14 @@
                         return btoa(Array.from(new TextEncoder().encode(str), c => String.fromCharCode(c)).join(''));
                     },
         getExtension(name) {
-            const reg = /(?!\.)\w+$/;
-            if (reg.test(name)) {
-                let match = name.match(reg);
-                return match[0].toUpperCase();
-            }
-            return '';
+            let s = String(name == null ? '' : name);
+            let m = /\.([A-Za-z0-9_]{1,16})$/.exec(s);
+            if (!m || s.length === m[0].length) return '';   // 只有点没有主名的不算
+            return m[1].toUpperCase();
         },
         sizeFormat(value) {
             if (value === +value) {
+                if (!(value >= 1)) return '0B';                 // 小于 1 字节时 log 为负，单位下标算出 undefined
                 let unit = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
                 let index = Math.floor(Math.log(value) / Math.log(1024));
                 let size = value / Math.pow(1024, index);
@@ -403,6 +405,14 @@
             return /^((127|10)\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3})$/.test(host)
                 || /^172\.(1[6-9]|2[0-9]|3[01])\.\d{1,3}\.\d{1,3}$/.test(host)
                 || /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(host);
+        },
+        // 端口和路径也得单独校验，否则 `@` 会把 host 换成别人的
+        localPartError(port, path) {
+            const pn = String(port == null ? '' : port);                 // 不 trim：带空格拼进去就是坏 URL
+            if (!/^\d{1,5}$/.test(pn) || +pn < 1 || +pn > 65535) return '端口应为 1-65535 的数字';
+            const p = String(path == null ? '' : path);
+            if (!/^\/[^@\s]*(?:\?[^@\s]*)?$/.test(p)) return '路径应以 / 开头，且不含 @ 和空格';
+            return '';
         },
         // ── 默认下载器：记住一组选择，打开面板直接可用 ──────────────────
         defaultSelection() {
@@ -473,6 +483,11 @@
             };
             if (!base.validRpcDomain(rpc.domain)) {
                 base.panelNotice('RPC主机无效，仅允许本机或内网地址（如 http://127.0.0.1）', 'error');
+                return null;
+            }
+            const partErr = base.localPartError(rpc.port, rpc.path);
+            if (partErr) {
+                base.panelNotice('RPC ' + partErr, 'error');
                 return null;
             }
             rpc.url = `${rpc.domain}:${rpc.port}${rpc.path}`;
@@ -764,7 +779,7 @@
                 <label class="fl-setting-label"><div class="fl-label">RPC主机</div><input type="text" placeholder="主机地址，需带上http(s)://" class="fl-input listener-domain" value="${base.esc(base.getValue('setting_rpc_domain'))}"></label>
                 <label class="fl-setting-label"><div class="fl-label">RPC端口</div><input type="text" placeholder="端口号，例如：Motrix为16800" class="fl-input listener-port" value="${base.esc(base.getValue('setting_rpc_port'))}"></label>
                 <label class="fl-setting-label"><div class="fl-label">RPC路径</div><input type="text" placeholder="路径，默认为/jsonrpc" class="fl-input listener-path" value="${base.esc(base.getValue('setting_rpc_path'))}"></label>
-                <label class="fl-setting-label"><div class="fl-label">RPC密钥</div><input type="text" placeholder="无密钥无需填写" class="fl-input listener-token" value="${base.esc(base.getValue('setting_rpc_token'))}"></label>
+                <label class="fl-setting-label"><div class="fl-label">RPC密钥</div><input type="password" autocomplete="off" placeholder="无密钥无需填写" class="fl-input listener-token" value="${base.esc(base.getValue('setting_rpc_token'))}"></label>
                 <label class="fl-setting-label"><div class="fl-label">保存路径</div><input type="text" placeholder="留空则使用 aria2 默认下载目录；Windows 示例：C:\\Downloads" class="fl-input listener-dir" value="${base.esc(base.getValue('setting_rpc_dir'))}"></label>
                 <div class="fl-setting-actions"><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-reset-rpc">恢复默认</button><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-test-rpc">测试连接</button></div>
             </div>`;
@@ -1004,6 +1019,8 @@
                 path = base.getValue('setting_rpc_path'),
                 token = base.getValue('setting_rpc_token');
             if (!base.validRpcDomain(domain)) { base.panelNotice('请先填写正确的 RPC 主机（仅允许本机或内网地址）', 'error'); return; }
+            const pErr = base.localPartError(port, path);
+            if (pErr) { base.panelNotice('RPC ' + pErr, 'error'); return; }
             const url = `${domain}:${port}${path}`;
             try {
                 const res = await base.post(url, { id: Date.now(), jsonrpc: '2.0', method: 'aria2.getVersion', params: [`token:${token || ''}`] });
@@ -1021,6 +1038,8 @@
                 user = base.getValue('setting_bitcomet_user'),
                 pass = base.getValue('setting_bitcomet_pass');
             if (!base.validRpcDomain(domain)) { if (!silent) base.panelNotice('请先填写正确的服务器地址（仅允许本机或内网地址）', 'error'); return false; }
+            const pErr = base.localPartError(port, path);
+            if (pErr) { if (!silent) base.panelNotice('BitComet ' + pErr, 'error'); return false; }
             const url = domain + ':' + port + path;
             const origin = domain + ':' + port;
             try {
@@ -1649,8 +1668,23 @@
                         if (r && r.loaded) { got[idx] = r.loaded; arm(); report(); }
                     },
                     onload: (r) => {
-                        if (r.status === 206 || r.status === 200) { got[idx] = end - start + 1; report(); finish({ ok: true, buf: r.response }); }
-                        else finish({ ok: false, why: 'HTTP ' + r.status });
+                        const want = end - start + 1;
+                        // 长度与起点都对得上才算这一块，短读拼进去就是坏文件
+                        const len = (r.response && (r.response.byteLength !== undefined ? r.response.byteLength : r.response.length)) || 0;
+                        const cr = /content-range:\s*bytes\s+(\d+)-(\d+)\/(\d+|\*)/i.exec(r.responseHeaders || '');
+                        // 缺 Content-Range 时只有「这一块就是整个文件」才证得了偏移
+                        const at = cr
+                            ? (Number(cr[1]) === start && Number(cr[2]) === end && (cr[3] === '*' || Number(cr[3]) === total))
+                            : (start === 0 && len === total);
+                        if (r.status === 206 && len === want && at) {
+                            got[idx] = want; report(); finish({ ok: true, buf: r.response });
+                        } else if (r.status === 206) {
+                            finish({ ok: false, why: '分块位置或长度不符（应为 ' + want + ' 字节）' });
+                        } else if (r.status === 200 && start === 0 && want === total && len === total) {
+                            got[idx] = want; report(); finish({ ok: true, buf: r.response });   // 200 只有单块文件能证偏移
+                        } else if (r.status === 200) {
+                            finish({ ok: false, why: '服务器不支持分段（返回整个文件）' });
+                        } else finish({ ok: false, why: 'HTTP ' + r.status });
                     },
                     onerror: () => finish({ ok: false, why: '网络错误' }),
                     ontimeout: () => finish({ ok: false, why: '超时' }),
@@ -1688,7 +1722,7 @@
                             const wait = /503/.test(r.why || '') ? 2000 * (t + 1) : 500 * (t + 1);
                             await base.sleep(wait);
                         }
-                        if (!r || !r.ok || !r.buf) { fail++; got[idx] = 0; return; }
+                        if (!r || !r.ok || !r.buf || r.buf.byteLength !== c.end - c.start + 1) { fail++; got[idx] = 0; return; }
                         done[me] = r.buf; finished += r.buf.byteLength; delete got[idx]; report();
                     }
                 };
@@ -1856,14 +1890,18 @@
                 _cdnHeaders(link) {
                     const h = {};
                     if (driveHdrs[link]) Object.assign(h, driveHdrs[link]);
-                    if (/d\.pcs\.baidu\.com/.test(link)) h['User-Agent'] = 'pan.baidu.com';
-                    if (/xunlei\.com/.test(link)) {
+                    // 按主机名判断，防子串冒充；UA 照发，Cookie 只走 https
+                    let host = '', secure = false;
+                    try { const u = new URL(link); host = u.hostname.toLowerCase(); secure = u.protocol === 'https:'; } catch (e) { }
+                    const onHost = (d) => host === d || host.endsWith('.' + d);
+                    if (onHost('d.pcs.baidu.com')) h['User-Agent'] = 'pan.baidu.com';
+                    if (onHost('xunlei.com')) {
                         const xc = xunlei && xunlei._getAuthCookie ? xunlei._getAuthCookie() : '';
-                        if (xc) h['Cookie'] = xc;
+                        if (xc && secure) h['Cookie'] = xc;
                     }
-                    if (/quark\.cn/.test(link)) {
+                    if (onHost('quark.cn')) {
                         h['User-Agent'] = LOCAL_CONFIG.quark.ua;
-                        h['Cookie'] = String(document.cookie);
+                        if (secure) h['Cookie'] = String(document.cookie);
                     }
                     return h;
                 },
@@ -1887,6 +1925,8 @@
                         base.panelNotice('BitComet 服务器地址无效，仅允许本机或内网地址', 'error');
                         return 'fail';
                     }
+                    const pErr = base.localPartError(port, path);
+                    if (pErr) { base.panelNotice('BitComet ' + pErr, 'error'); return 'fail'; }
                     const url = domain + ':' + port + path;
                     const origin = domain + ':' + port;   // BitComet 面板自身的 origin
                     headers = this.standHeaders(headers);
@@ -3739,7 +3779,12 @@
                         };
                     }
                 }
-                let res = await base.post(panInfo.pcs[1], `linkId=${vueDom.linkID}&contentIds=${encodeURIComponent(item.path)}&catalogIds=`, {
+                // 移动云盘把 linkID 挂在页面根实例上，别的函数拿不到
+                let vueDom = null;
+                try { vueDom = document.querySelector('.home-page').__vue__ || null; } catch (e) { }
+                let linkId = (vueDom && vueDom.linkID) || '';
+                if (!linkId) return { index, downloadUrl: '读不到移动云盘 linkID，请刷新页面后重试' };
+                let res = await base.post(panInfo.pcs[1], `linkId=${encodeURIComponent(linkId)}&contentIds=${encodeURIComponent(item.path)}&catalogIds=`, {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     });
                     if (res.code === 0) {
@@ -4156,7 +4201,18 @@
                 return this._fileRow({ file_name: this._name(it), file_size: it.size || it.file_size || it.size_bytes }, link, it);
             });
             if (list.every(f => !f.dlink || this._deadLink(f.dlink))) {
-                let raw = String(JSON.stringify(this._lastFetch || this._lastList || dl || {})).slice(0, 200);
+                // 签名与请求头都算临时凭证，回显前按字段打码
+                let raw = String(JSON.stringify(this._lastFetch || this._lastList || dl || {}, (k, v) => {
+                    if (typeof v === 'string') {
+                        if (/(sign|token|cookie|auth|secret|passwd|password|pwd|session|jwt|apikey|credential)/i.test(k)) return '…';
+                        return v.replace(/https?:\/\/[^\s"']+/gi, (u) => {
+                            const cut = u.search(/[?#]/);
+                            const head = (cut > 0 ? u.slice(0, cut) : u).replace(/\/\/[^/@\s]+@/, '//…@');
+                            return cut > 0 ? head + '…' : head;
+                        });
+                    }
+                    return v;
+                })).slice(0, 200);
                 return base.renderErrorPanel('城通个人网盘取不到可用地址。接口原文：' + raw, this);
             }
             base.renderDownloadPanel(list, this);
