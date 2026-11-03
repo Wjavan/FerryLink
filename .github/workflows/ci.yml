@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: 语法检查
+        run: node --check "网盘直链下载助手.user.js"
+
+      - name: 元数据检查
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, re, sys
+
+          SRC = pathlib.Path('网盘直链下载助手.user.js')
+          LIMIT = 2 * 1024 * 1024
+          UPDATE_URL = 'https://update.greasyfork.org/scripts/595544/FerryLink.meta.js'
+          DOWNLOAD_URL = 'https://update.greasyfork.org/scripts/595544/FerryLink.user.js'
+          CI = os.environ.get('GITHUB_ACTIONS') == 'true'
+          fails = []
+
+          def note(kind, msg):
+              if kind == 'error':
+                  fails.append(msg)
+              print('::%s::%s' % (kind, msg) if CI else msg)
+
+          try:
+              raw = SRC.read_bytes()
+          except OSError:
+              print('::error::找不到 %s' % SRC.name if CI else '找不到 %s' % SRC.name)
+              sys.exit(1)
+
+          size = len(raw)
+          try:
+              text = raw.decode('utf-8-sig')
+          except UnicodeDecodeError as e:
+              sys.exit('%s 不是合法的 UTF-8：%s' % (SRC.name, e))
+
+          if size > LIMIT:
+              note('error', '文件 %d 字节，超过 GreasyFork 的 2 MB 上限' % size)
+          header = []
+          raw_header = []
+          code = []
+          inside = saw_start = saw_end = False
+          for line in text.splitlines():
+              s = line.strip()
+              if s.startswith('// ==UserScript=='):
+                  inside = saw_start = True
+                  continue
+              if s.startswith('// ==/UserScript=='):
+                  inside = False
+                  saw_end = True
+                  continue
+              if inside:
+                  if s.startswith('//'):
+                      header.append(s[2:].strip())
+                      raw_header.append(line)
+                  continue
+              if s.startswith('//'):
+                  continue
+              code.append(line)
+
+          if not (saw_start and saw_end):
+              note('error', '元数据块缺少 ==UserScript== 起始或结束标记')
+
+          def values(key):
+              out = []
+              for h in header:
+                  parts = h.split(None, 1)
+                  if parts and parts[0] == key:
+                      out.append(parts[1].strip() if len(parts) > 1 else '')
+              return out
+
+          name = values('@name')
+          version = values('@version')
+          match = values('@match')
+          grant = values('@grant')
+          require = values('@require')
+
+          if not name or not name[0]:
+              note('error', '缺少 @name')
+          if not match:
+              note('error', '缺少 @match')
+          # 发版按行首的 // @version 取值，此处须与其一致
+          release_ver = re.search(r'(?m)^// @version[ \t]+([0-9][0-9.]*)', '\n'.join(raw_header))
+          if not version:
+              note('error', '缺少 @version')
+          elif len(version) > 1:
+              note('error', '@version 出现了 %d 次' % len(version))
+          elif not release_ver:
+              note('error', '@version 行必须写成行首的 // @version <版本>，否则 release.yml 抠不到')
+          elif version[0] != release_ver.group(1):
+              note('error', '@version 「%s」与 release.yml 抠到的「%s」不一致'
+                   % (version[0], release_ver.group(1)))
+          elif not re.fullmatch(r'[0-9]+(?:\.[0-9]+)*', version[0]):
+              note('error', '@version 「%s」不是纯数字点分' % version[0])
+
+          for m in match:
+              if not re.fullmatch(r'(?:\*|https?)://[^/\s]+/\S*', m):
+                  note('error', '@match 「%s」不是完整的匹配式（需要 scheme://host/path）' % m)
+
+          for r in require:
+              if not re.fullmatch(r'https://\S+', r):
+                  note('error', '@require 必须是单个 https 地址：「%s」' % r)
+
+          # 更新来源固定为 GreasyFork，指向他处视为篡改
+          for key, want in (('@updateURL', UPDATE_URL), ('@downloadURL', DOWNLOAD_URL)):
+              vals = values(key)
+              if len(vals) != 1:
+                  note('error', '%s 必须恰好出现一次，当前 %d 次' % (key, len(vals)))
+              elif vals[0] != want:
+                  note('error', '%s 必须指向 %s，当前是「%s」' % (key, want, vals[0]))
+
+          # 扫描前剥离块注释；字符串内的名称仍计入
+          body = re.sub(r'/\*.*?\*/', '', '\n'.join(code), flags=re.S)
+          grants = set(grant)
+          # 头部未闭合时代码区为空，跳过接口扫描
+          if saw_end:
+              used = set(re.findall(r'\bGM_[A-Za-z]\w*', body))
+              used |= {'GM.' + m for m in re.findall(r'\bGM\.([A-Za-z]\w*)', body)}
+              for g in sorted(used - grants):
+                  note('error', '代码用到 %s，但 @grant 没有声明' % g)
+              for g in sorted(x for x in grants if x.startswith('GM_') or x.startswith('GM.')):
+                  if g not in used:
+                      note('warning', '@grant 声明了 %s，代码里没有用到' % g)
+
+          print('脚本 %d 字节，@version %s，@match %d 条，@require %d 条'
+                % (size, release_ver.group(1) if release_ver else '-', len(match), len(require)))
+          if fails:
+              print('元数据检查失败 %d 项' % len(fails))
+              sys.exit(1)
+          print('元数据检查通过')
+          PY
+
+
+  lint:
+    # 该任务需下载外部二进制，不参与发版检查
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 安装 actionlint
+        env:
+          SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -euo pipefail
+          url='https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz'
+          tmp="$RUNNER_TEMP/actionlint.tar.gz"
+          curl -fsSL --proto '=https' --proto-redir '=https' \
+            --retry 3 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 60 \
+            -o "$tmp" "$url"
+          printf '%s  %s\n' "$SHA256" "$tmp" | sha256sum -c -
+          tar -xzf "$tmp" -C "$RUNNER_TEMP" actionlint
+
+      - name: workflow 检查
+        run: |
+          # 校验工具由镜像提供，缺失时直接失败而非跳过
+          command -v shellcheck >/dev/null || { echo "::error::镜像里没有 shellcheck，workflow 检查不完整"; exit 1; }
+          "$RUNNER_TEMP/actionlint"
