@@ -132,7 +132,7 @@ jobs:
               elif vals[0] != want:
                   note('error', '%s 必须指向 %s，当前是「%s」' % (key, want, vals[0]))
 
-          # 去掉块注释再扫；字符串里出现的 GM_ 仍会被算进来
+          # 扫描前剥离块注释；字符串内的名称仍计入
           body = re.sub(r'/\*.*?\*/', '', '\n'.join(code), flags=re.S)
           grants = set(grant)
           # 头没收尾时后面全被当成头部，代码扫描没有意义
