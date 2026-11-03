@@ -18,6 +18,8 @@
 // @match             *://yun.baidu.com/disk/home*
 // @match             *://pan.baidu.com/disk/main*
 // @match             *://yun.baidu.com/disk/main*
+// @match             *://pan.baidu.com/s/*
+// @match             *://yun.baidu.com/s/*
 // @match             *://openapi.baidu.com/oauth/*
 // @match             *://www.aliyundrive.com/drive*
 // @match             *://www.alipan.com/drive*
@@ -2215,6 +2217,8 @@
             .ctfile-button:active { background: #003eb3; border-color: #003eb3; }
             .ctfile-button:focus-visible { outline: 2px solid #0958d9; outline-offset: 2px; }
             .ctfile-button svg { width: 18px; height: 18px; flex-shrink: 0; }
+            .fl-button.fl-button-share { display: inline-flex; align-items: center; box-sizing: border-box; height: 36px; margin: 0 5px; border-radius: 20px; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1; white-space: nowrap; flex-shrink: 0; }
+            .fl-button.fl-button-share:hover { box-shadow: inset 0 0 0 999px rgba(9, 170, 255, .1); }
             .ctfile-button-sm { height: 30px; padding: 0 14px; gap: 6px; font-size: 14px; font-weight: 600; }
             .ctfile-button-sm svg { width: 16px; height: 16px; }
             /* 跟「上传/上传文件夹」同款：色值、高度、圆角挂载时从旁边按钮读回来（--fl-*） */
@@ -2369,8 +2373,8 @@
     };
     const LOCAL_CONFIG = {
         baidu: {
-            pcs: {"0": "https://pan.baidu.com/rest/2.0/xpan/multimedia?method=filemetas&dlink=1", "1": "https://pan.baidu.com/api/sharedownload?channel=chunlei&clienttype=12&web=1&app_id=250528", "2": "https://pan.baidu.com/share/tplconfig?fields=sign,timestamp&channel=chunlei&web=1&app_id=250528&clienttype=0", "3": "https://openapi.baidu.com/oauth/2.0/authorize?client_id=IlLqBbU3GjQ0t46TRwFateTprHWl39zF&response_type=token&redirect_uri=oob&confirm_login=0&scope=basic,netdisk", "4": "https://openapi.baidu.com/oauth/2.0/login_success"},
-            btn: {"home": ".tcuLAu", "main": ".wp-s-agile-tool-bar__header"},
+            pcs: {"0": "https://pan.baidu.com/rest/2.0/xpan/multimedia?method=filemetas&dlink=1", "1": "https://pan.baidu.com/api/sharedownload?channel=chunlei&web=1&app_id=250528", "2": "https://pan.baidu.com/share/tplconfig?fields=sign,timestamp&channel=chunlei&web=1&app_id=250528&clienttype=0&view_mode=1", "3": "https://openapi.baidu.com/oauth/2.0/authorize?client_id=IlLqBbU3GjQ0t46TRwFateTprHWl39zF&response_type=token&redirect_uri=oob&confirm_login=0&scope=basic,netdisk", "4": "https://openapi.baidu.com/oauth/2.0/login_success"},
+            btn: {"home": ".tcuLAu", "main": ".wp-s-agile-tool-bar__header", "share": ".module-share-bottom-bar .x-button-box"},
             ua: "pan.baidu.com",
             api: {0: "API 下载", 1: ''},
             aria: {0: "Aria 下载", 1: ''},
@@ -2497,11 +2501,12 @@
         addButton() {
             const $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><div style="color:#fff;background: ${color};border-color:${color}" class="g-button g-button-blue"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></div>`);
             const $mainButton = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; padding: 8px 16px; border: none;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
+            const $shareButton = $(`<a class="g-button tools-share-V20-btn fl-button fl-button-share" href="javascript:;" title="下载助手"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></a>`);
             base.mountWithRetry(() => {
                 pageNum = this.detectPage();
-                let $toolWrap = $(pageNum === 'home' ? panInfo.btn.home : panInfo.btn.main);
+                let $toolWrap = $(panInfo.btn[pageNum] || panInfo.btn.main);
                 if (!$toolWrap.length) return false;
-                $toolWrap.prepend(pageNum === 'main' ? $mainButton : $button);
+                $toolWrap.prepend(pageNum === 'main' ? $mainButton : (pageNum === 'share' ? $shareButton : $button));
                 return true;
             }, () => !!this.detectPage());
             this.setBDUSS();
@@ -2608,6 +2613,8 @@
         },
         async getPCSLink(maxRequestTime = 1) {
             selectedFiles = this.getSelectedList();
+            // 分享页的取链链路与个人网盘不是一套
+            if (pageNum === 'share') return this._shareLink();
             let fidArray = this._getFidArray(), res;
             const authFail = () => { Swal.close(); return base.renderErrorPanel('百度授权未完成：请刷新重试，仍失败请确认已登录百度', this); };
             if (pageNum === 'home' || pageNum === 'main') {
@@ -2721,12 +2728,97 @@
                 base.renderDownloadPanel(normalized, this);
             }
         },
+        // 列表与分享标识都在页面全局里，surl 在路径上
+        _shareInfo() {
+            let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+            let dump = null;
+            try { dump = scope.locals && scope.locals.dump ? scope.locals.dump() : null; } catch (e) { }
+            if (!dump) { try { dump = locals.dump(); } catch (e) { } }
+            let info = {};
+            Object.keys(dump || {}).forEach(k => {
+                let v = dump[k];
+                info[k] = (v && typeof v === 'object' && 'value' in v) ? v.value : v;
+            });
+            let sekey = '';
+            try { sekey = String(scope.currentSekey || ''); } catch (e) { }
+            let m = /^\/s\/([^/?#]+)/.exec(location.pathname);
+            return { info: info, sekey: sekey, surl: m ? m[1] : '' };
+        },
+        // 这条链路要带页面来源，用页面的 fetch 发
+        _shareRequest(url, method, body) {
+            // 拿不到 unsafeWindow 就用沙箱的 window，指向同一个页面
+            let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+            // 两条通道一种给对象一种给文本，都得吃
+            let toJson = (t) => {
+                if (t && typeof t === 'object') return t;
+                try { return JSON.parse(t); } catch (e) { throw new Error(String(t).slice(0, 120)); }
+            };
+            if (scope && typeof scope.fetch === 'function') {
+                let opt = { method: method, credentials: 'include' };
+                if (method !== 'GET') {
+                    opt.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+                    opt.body = body;
+                }
+                return scope.fetch(url, opt).then(r => r.text()).then(toJson);
+            }
+            return method === 'GET'
+                ? Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson)
+                : Promise.resolve(base.post(url, body, { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': location.origin }, 'text')).then(toJson);
+        },
+        async _shareLink() {
+            if (selectedFiles.length === 0) { Swal.close(); return base.renderDownloadPanel([], this); }
+            let files = selectedFiles.filter(v => +v.isdir !== 1);
+            if (!files.length) { Swal.close(); return message.error('提示：分享页只支持文件，请勾选文件后再试！'); }
+            let ref = this._shareInfo();
+            if (!ref.surl) { Swal.close(); return base.renderErrorPanel('读不到分享标识，请刷新页面后重试', this); }
+            if (String(ref.info.loginstate) !== '1' || !ref.info.bdstoken) {
+                Swal.close(); return base.renderErrorPanel('分享页下载需要登录百度网盘，请登录后重试', this);
+            }
+            let tpl = await this._shareRequest(`${panInfo.pcs[2]}&surl=${ref.surl}&bdstoken=${ref.info.bdstoken}`, 'GET');
+            let sign = (tpl && tpl.data) || {};
+            if (!sign.sign || !sign.timestamp) {
+                Swal.close(); return base.renderErrorPanel('取不到分享签名：' + String(JSON.stringify(tpl)).slice(0, 120), this);
+            }
+            let rows = [];
+            for (let i = 0; i < files.length; i++) {
+                let it = files[i];
+                if (files.length > 1) base.tipLoading('正在获取下载链接 ' + (i + 1) + '/' + files.length + '…');
+                let fid = it.fs_id !== undefined && it.fs_id !== null ? it.fs_id
+                    : (it.file_id !== undefined && it.file_id !== null ? it.file_id : it.id);
+                let row = { server_filename: it.server_filename || it.filename || '', size: it.size, isdir: it.isdir };
+                try {
+                    let form = 'encrypt=0&product=share'
+                        + '&extra=' + encodeURIComponent(JSON.stringify({ sekey: ref.sekey }))
+                        + '&timestamp=' + sign.timestamp
+                        + '&uk=' + encodeURIComponent(String(ref.info.share_uk || ''))
+                        + '&primaryid=' + encodeURIComponent(String(ref.info.shareid || ''))
+                        + '&fid_list=' + encodeURIComponent(JSON.stringify([String(fid)]));
+                    let res = await this._shareRequest(`${panInfo.pcs[1]}&sign=${sign.sign}&timestamp=${sign.timestamp}`, 'POST', form);
+                    if (res && res.errno === 0 && Array.isArray(res.list) && res.list.length) {
+                        row = Object.assign(row, res.list[0]);
+                    } else if (res && res.errno === 0 && typeof res.list === 'string') {
+                        row.dlink = '该文件超过百度可获取限制，需保存到网盘后下载';
+                    } else if (res && (res.errno === 9019 || /needverify/.test(String(res.errmsg)))) {
+                        row.dlink = '百度要求身份验证，请刷新页面后重试';
+                    } else {
+                        row.dlink = '获取下载地址失败：' + String((res && (res.errmsg || res.errno)) || '').slice(0, 60);
+                    }
+                } catch (e) {
+                    row.dlink = '获取下载地址失败：' + ((e && e.message) || '未知错误');
+                }
+                rows.push(row);
+                if (i + 1 < files.length) await base.sleep(1000);
+            }
+            base.renderDownloadPanel(this.normalizeList(rows), this);
+        },
         normalizeList(list) {
             return list.map(v => {
+                let token = base.getValue('baidu_access_token');
                 let dlink = '';
                 if (v.dlink) {
-                    dlink = /^https?:\/\//.test(v.dlink)
-                        ? v.dlink + '&access_token=' + base.getValue('baidu_access_token')
+                    // 分享页取链不经过授权，没有令牌就别挂空参数
+                    dlink = /^https?:\/\//.test(v.dlink) && token
+                        ? v.dlink + '&access_token=' + token
                         : v.dlink;
                 }
                 return {
@@ -2766,12 +2858,14 @@
             }
         },
         getSelectedList() {
-            try {
-                return require('system-core:context/context.js').instanceForSystem.list.getSelected();
-            } catch (e) {
-                let panInfo = document.querySelector('.wp-s-core-pan');
-                return panInfo && panInfo.__vue__ ? panInfo.__vue__.selectedList : [];
-            }
+            // 页面全局在沙箱里不一定直接可读，两个入口都试
+            let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+            let ctx = null;
+            try { ctx = require('system-core:context/context.js'); } catch (e) { }
+            if (!ctx) { try { ctx = scope.require('system-core:context/context.js'); } catch (e) { } }
+            try { if (ctx) return ctx.instanceForSystem.list.getSelected(); } catch (e) { }
+            let panInfo = document.querySelector('.wp-s-core-pan');
+            return panInfo && panInfo.__vue__ ? panInfo.__vue__.selectedList : [];
         },
         detectPage() {
             let path = location.pathname, hash = location.hash || '';
@@ -2780,6 +2874,7 @@
                 if (/^#\/recyclebin/.test(hash)) return '';
                 return 'main';
             }
+            if (/^\/s\//.test(path)) return 'share';
             return '';
         },
         async initFerryLink() {
