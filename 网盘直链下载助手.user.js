@@ -1680,8 +1680,8 @@
                             got[idx] = want; report(); finish({ ok: true, buf: r.response });
                         } else if (r.status === 206) {
                             finish({ ok: false, why: '分块位置或长度不符（应为 ' + want + ' 字节）' });
-                        } else if (r.status === 200 && start === 0 && len === total) {
-                            got[idx] = want; report(); finish({ ok: true, buf: r.response });   // 200 只有整文件能证偏移
+                        } else if (r.status === 200 && start === 0 && want === total && len === total) {
+                            got[idx] = want; report(); finish({ ok: true, buf: r.response });   // 200 只有单块文件能证偏移
                         } else if (r.status === 200) {
                             finish({ ok: false, why: '服务器不支持分段（返回整个文件）' });
                         } else finish({ ok: false, why: 'HTTP ' + r.status });
@@ -1722,7 +1722,7 @@
                             const wait = /503/.test(r.why || '') ? 2000 * (t + 1) : 500 * (t + 1);
                             await base.sleep(wait);
                         }
-                        if (!r || !r.ok || !r.buf) { fail++; got[idx] = 0; return; }
+                        if (!r || !r.ok || !r.buf || r.buf.byteLength !== c.end - c.start + 1) { fail++; got[idx] = 0; return; }
                         done[me] = r.buf; finished += r.buf.byteLength; delete got[idx]; report();
                     }
                 };
@@ -1890,18 +1890,18 @@
                 _cdnHeaders(link) {
                     const h = {};
                     if (driveHdrs[link]) Object.assign(h, driveHdrs[link]);
-                    // 按主机名判断，防子串冒充；明文 HTTP 不带凭据
+                    // 按主机名判断，防子串冒充；UA 照发，Cookie 只走 https
                     let host = '', secure = false;
                     try { const u = new URL(link); host = u.hostname.toLowerCase(); secure = u.protocol === 'https:'; } catch (e) { }
-                    const on = (d) => secure && (host === d || host.endsWith('.' + d));
-                    if (on('d.pcs.baidu.com')) h['User-Agent'] = 'pan.baidu.com';
-                    if (on('xunlei.com')) {
+                    const onHost = (d) => host === d || host.endsWith('.' + d);
+                    if (onHost('d.pcs.baidu.com')) h['User-Agent'] = 'pan.baidu.com';
+                    if (onHost('xunlei.com')) {
                         const xc = xunlei && xunlei._getAuthCookie ? xunlei._getAuthCookie() : '';
-                        if (xc) h['Cookie'] = xc;
+                        if (xc && secure) h['Cookie'] = xc;
                     }
-                    if (on('quark.cn')) {
+                    if (onHost('quark.cn')) {
                         h['User-Agent'] = LOCAL_CONFIG.quark.ua;
-                        h['Cookie'] = String(document.cookie);
+                        if (secure) h['Cookie'] = String(document.cookie);
                     }
                     return h;
                 },
