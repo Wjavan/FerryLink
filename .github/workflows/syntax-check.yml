@@ -1,17 +1,160 @@
-name: Syntax Check
+name: CI
 
 on:
   pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
 
-      - name: node --check
+      - name: 语法检查
         run: node --check "网盘直链下载助手.user.js"
+
+      - name: 元数据检查
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, re, sys
+
+          SRC = pathlib.Path('网盘直链下载助手.user.js')
+          LIMIT = 2 * 1024 * 1024
+          CI = os.environ.get('GITHUB_ACTIONS') == 'true'
+          fails = []
+          warns = []
+
+          def note(kind, msg):
+              (fails if kind == 'error' else warns).append(msg)
+              print('::%s::%s' % (kind, msg) if CI else msg)
+
+          try:
+              raw = SRC.read_bytes()
+          except OSError:
+              print('::error::找不到 %s' % SRC.name if CI else '找不到 %s' % SRC.name)
+              sys.exit(1)
+
+          size = len(raw)
+          text = raw.decode('utf-8-sig', errors='replace')
+
+          if size > LIMIT:
+              note('error', '文件 %d 字节，超过 GreasyFork 的 2 MB 上限' % size)
+          end_ok = '// ==/UserScript==' in text
+          if '// ==UserScript==' not in text or not end_ok:
+              note('error', '元数据块缺少 ==UserScript== 起始或结束标记')
+
+          header = []
+          code = []
+          inside = False
+          for line in text.splitlines():
+              s = line.strip()
+              if s.startswith('// ==UserScript=='):
+                  inside = True
+                  continue
+              if s.startswith('// ==/UserScript=='):
+                  inside = False
+                  continue
+              if inside:
+                  if s.startswith('//'):
+                      header.append(s[2:].strip())
+                  continue
+              if s.startswith('//'):
+                  continue
+              code.append(line)
+
+          def values(key):
+              out = []
+              for h in header:
+                  if h == key or h.startswith(key + ' '):
+                      out.append(h[len(key):].strip())
+              return out
+
+          name = values('@name')
+          version = values('@version')
+          match = values('@match')
+          grant = values('@grant')
+          require = values('@require')
+
+          if not name or not name[0]:
+              note('error', '缺少 @name')
+          if not match:
+              note('error', '缺少 @match')
+          if not version:
+              note('error', '缺少 @version')
+          elif len(version) > 1:
+              note('error', '@version 出现了 %d 次' % len(version))
+          elif not re.fullmatch(r'[0-9]+(?:\.[0-9]+)*', version[0]):
+              note('error', '@version 「%s」不是纯数字点分，release.yml 会抠错版本号' % version[0])
+
+          for m in match:
+              if not re.match(r'^(?:\*|https?)://[^/\s]+', m):
+                  note('error', '@match 「%s」缺少 scheme 或 host' % m)
+
+          for r in require:
+              if r.startswith('http://'):
+                  note('error', '@require 用了 http：「%s」' % r)
+
+          # 只忽略 // 行注释；块注释里提到 GM_ 会被当成使用
+          body = re.sub(r'/\*.*?\*/', '', '\n'.join(code), flags=re.S)
+          grants = set(grant)
+          # 头没收尾时后面全被当成头部，代码扫描没有意义
+          if end_ok:
+              used = set(re.findall(r'\bGM_[A-Za-z]\w*', body))
+              for g in sorted(used - grants):
+                  note('error', '代码用到 %s，但 @grant 没有声明' % g)
+              for g in sorted(x for x in grants if x.startswith('GM_')):
+                  if g not in used:
+                      note('warning', '@grant 声明了 %s，代码里没有用到' % g)
+
+          print('脚本 %d 字节，@version %s，@match %d 条，@require %d 条'
+                % (size, version[0] if version else '-', len(match), len(require)))
+          if fails:
+              print('元数据检查失败 %d 项' % len(fails))
+              sys.exit(1)
+          print('元数据检查通过')
+          PY
+
+
+  lint:
+    # workflow 检查要下载第三方二进制，不放进发版门禁
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 安装 actionlint
+        env:
+          SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -uo pipefail
+          url='https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz'
+          tmp="$RUNNER_TEMP/actionlint.tar.gz"
+          curl -sSL --retry 3 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 60 -o "$tmp" "$url"
+          printf '%s  %s\n' "$SHA256" "$tmp" | sha256sum -c -
+          tar -xzf "$tmp" -C "$RUNNER_TEMP" actionlint
+
+      - name: workflow 检查
+        run: |
+          # shellcheck 由镜像预装，缺了会静默跳过 shell 检查，宁可当场失败
+          command -v shellcheck >/dev/null || { echo "::error::镜像里没有 shellcheck，workflow 检查不完整"; exit 1; }
+          "$RUNNER_TEMP/actionlint"

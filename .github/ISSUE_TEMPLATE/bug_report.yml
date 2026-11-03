@@ -1,0 +1,56 @@
+name: 问题反馈
+description: 脚本在某个网盘页面不工作、报错或下载失败
+title: '[问题] '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        只反馈 FerryLink 本身的问题。怀疑和其他脚本或扩展冲突时，请先停用其他脚本再试一遍。
+  - type: input
+    id: page
+    attributes:
+      label: 页面地址
+      description: 出问题的页面完整 URL。可以脱敏，但要保留页面类型（分享页 / 个人网盘 / 目录页）与路径结构。
+      placeholder: https://pan.baidu.com/s/xxxx
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 脚本版本
+      description: 在脚本管理器里打开 FerryLink 详情页可以看到，形如 1.6.1。
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 浏览器与脚本管理器
+      description: 浏览器版本 + 管理器名称与版本。
+      placeholder: Edge 138 + Tampermonkey 5.x
+    validations:
+      required: true
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 现象
+      description: 点了什么、期望发生什么、实际发生什么。
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: 控制台报错
+      description: F12 打开开发者工具，切到 Console，把红色报错整段贴上来。没有就写「无」。
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 确认
+      options:
+        - label: 在最新版本上可以复现
+          required: true
+        - label: 停用其他脚本后仍然复现
+          required: false
