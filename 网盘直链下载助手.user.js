@@ -1671,14 +1671,17 @@
                         const want = end - start + 1;
                         // 长度与起点都对得上才算这一块，短读拼进去就是坏文件
                         const len = (r.response && (r.response.byteLength !== undefined ? r.response.byteLength : r.response.length)) || 0;
-                        const cr = /content-range:\s*bytes\s+(\d+)-/i.exec(r.responseHeaders || '');
-                        // 缺 Content-Range 就证明不了偏移，只认「这一块就是整个文件」
-                        if (r.status === 206 && len === want && (cr ? Number(cr[1]) === start : want >= total)) {
+                        const cr = /content-range:\s*bytes\s+(\d+)-(\d+)\/(\d+|\*)/i.exec(r.responseHeaders || '');
+                        // 缺 Content-Range 时只有「这一块就是整个文件」才证得了偏移
+                        const at = cr
+                            ? (Number(cr[1]) === start && Number(cr[2]) === end && (cr[3] === '*' || Number(cr[3]) === total))
+                            : (start === 0 && len === total);
+                        if (r.status === 206 && len === want && at) {
                             got[idx] = want; report(); finish({ ok: true, buf: r.response });
                         } else if (r.status === 206) {
                             finish({ ok: false, why: '分块位置或长度不符（应为 ' + want + ' 字节）' });
-                        } else if (r.status === 200 && len === want) {
-                            got[idx] = want; report(); finish({ ok: true, buf: r.response });
+                        } else if (r.status === 200 && start === 0 && len === total) {
+                            got[idx] = want; report(); finish({ ok: true, buf: r.response });   // 200 只有整文件能证偏移
                         } else if (r.status === 200) {
                             finish({ ok: false, why: '服务器不支持分段（返回整个文件）' });
                         } else finish({ ok: false, why: 'HTTP ' + r.status });
@@ -1887,10 +1890,10 @@
                 _cdnHeaders(link) {
                     const h = {};
                     if (driveHdrs[link]) Object.assign(h, driveHdrs[link]);
-                    // 按主机名判断，防子串冒充
-                    let host = '';
-                    try { host = new URL(link).hostname.toLowerCase(); } catch (e) { }
-                    const on = (d) => host === d || host.endsWith('.' + d);
+                    // 按主机名判断，防子串冒充；明文 HTTP 不带凭据
+                    let host = '', secure = false;
+                    try { const u = new URL(link); host = u.hostname.toLowerCase(); secure = u.protocol === 'https:'; } catch (e) { }
+                    const on = (d) => secure && (host === d || host.endsWith('.' + d));
                     if (on('d.pcs.baidu.com')) h['User-Agent'] = 'pan.baidu.com';
                     if (on('xunlei.com')) {
                         const xc = xunlei && xunlei._getAuthCookie ? xunlei._getAuthCookie() : '';
@@ -4201,10 +4204,11 @@
                 // 签名与请求头都算临时凭证，回显前按字段打码
                 let raw = String(JSON.stringify(this._lastFetch || this._lastList || dl || {}, (k, v) => {
                     if (typeof v === 'string') {
-                        if (/(sign|token|cookie|auth|secret|passwd|credential)/i.test(k)) return '…';
-                        return v.replace(/https?:\/\/[^\s"']+/g, (u) => {
-                            let q = u.indexOf('?');
-                            return q > 0 ? u.slice(0, q) + '?…' : u;
+                        if (/(sign|token|cookie|auth|secret|passwd|password|pwd|session|jwt|apikey|credential)/i.test(k)) return '…';
+                        return v.replace(/https?:\/\/[^\s"']+/gi, (u) => {
+                            const cut = u.search(/[?#]/);
+                            const head = (cut > 0 ? u.slice(0, cut) : u).replace(/\/\/[^/@\s]+@/, '//…@');
+                            return cut > 0 ? head + '…' : head;
                         });
                     }
                     return v;
