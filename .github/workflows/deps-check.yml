@@ -1,10 +1,14 @@
 name: Deps Check
 
 # 依赖清单只有脚本头一个出处：这里照着它逐个下载核对，不在别处另抄一份。
-# 没有 deps.lock 就按本次结果生成基线；地址增删只提示不拦；连不上直接红。
+# 没有 deps.lock 就按本次结果生成基线；地址增删只提示不拦；连不上、锁格式坏直接红。
 
 on:
   pull_request:
+    paths:
+      - '网盘直链下载助手.user.js'
+      - '.github/deps.lock'
+      - '.github/workflows/deps-check.yml'
   workflow_dispatch:
 
 permissions:
@@ -20,6 +24,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: 逐个下载核对
         shell: bash
@@ -27,11 +33,25 @@ jobs:
           set -u
           SRC='网盘直链下载助手.user.js'
           LOCK='.github/deps.lock'
+          SUMMARY="${GITHUB_STEP_SUMMARY:-}"
+
+          fail=0; warn=0
+          # 在 Actions 里发注解（页面显示黄/红条），本地跑打普通行，避免一条信息出现两遍
+          on_fail() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::error::$*"; else echo "FAIL  $*"; fi; fail=$((fail + 1)); }
+          on_warn() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::warning::$*"; else echo "WARN  $*"; fi; warn=$((warn + 1)); }
+          to_summary() { [ -n "$SUMMARY" ] && printf '%s\n' "$*" >> "$SUMMARY"; }
 
           declare -A PIN=()
           if [ -f "$LOCK" ]; then
-            while read -r u s; do
+            n=0
+            while read -r u s rest; do
+              n=$((n + 1))
               case "$u" in ''|'#'*) continue ;; esac
+              if [ -z "$s" ] || [ -n "$rest" ] || ! [[ "$s" =~ ^[0-9a-f]{64}$ ]]; then
+                echo "::error::$LOCK 第 $n 行格式不对"
+                echo "FAIL  $LOCK 第 $n 行要『地址 + 空格 + 64 位 sha256』：$u"
+                exit 1
+              fi
               PIN["$u"]="$s"
             done < <(tr -d '\r' < "$LOCK")
           fi
@@ -40,31 +60,39 @@ jobs:
             | awk '{print $NF}' | tr -d '\r' | sort -u)
           if [ "${#urls[@]}" -eq 0 ]; then echo 'FAIL  脚本头里没抽到依赖'; exit 1; fi
 
-          fail=0; warn=0
+          # 版本号两种写法都认：/1.2.3/ 与 @1.2.3/
+          ver_of() {
+            local u="$1" v
+            v=$(sed -nE 's#.*/([0-9]+\.[0-9]+\.[0-9]+)/.*#\1#p' <<<"$u")
+            [ -n "$v" ] || v=$(sed -nE 's#.*@([0-9]+\.[0-9]+\.[0-9]+)(/.*)?$#\1#p' <<<"$u")
+            printf '%s' "$v"
+          }
+
           declare -A GOT=()
           for u in "${urls[@]}"; do
             tmp="${RUNNER_TEMP:-/tmp}/dep-$$-${RANDOM}.bin"
-            meta=$(curl -sSL --retry 3 --retry-all-errors --retry-delay 2 \
-                   --connect-timeout 10 --max-time 40 -o "$tmp" \
-                   -w '%{http_code}|%{content_type}' "$u" || true)
+            meta=$(curl -sSL --proto '=https' --proto-redir '=https' --max-filesize 5242880 \
+                   --retry 3 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 40 \
+                   -o "$tmp" -w '%{http_code}|%{content_type}' "$u" || true)
             code=${meta%%|*}; ctype=${meta#*|}
             [ -n "$code" ] || code=000
             size=$([ -f "$tmp" ] && wc -c < "$tmp" || echo 0)
             name=$(basename "${u%%\?*}")
-            v=$(sed -nE 's#.*/([0-9]+\.[0-9]+\.[0-9]+)/.*#\1#p' <<<"$u")
+            v=$(ver_of "$u")
 
             if [ "$code" != 200 ]; then
-              echo "FAIL  $name  HTTP $code"; fail=$((fail + 1)); rm -f "$tmp"; continue
+              on_fail "$name  HTTP $code"; rm -f "$tmp"; continue
             fi
             if [ "$size" -lt 1000 ]; then
-              echo "FAIL  $name  只有 $size 字节，像错误页"; fail=$((fail + 1)); rm -f "$tmp"; continue
+              on_fail "$name  只有 $size 字节，像错误页"; rm -f "$tmp"; continue
             fi
             case "$ctype" in
-              *html*)
-                echo "FAIL  $name  返回的是网页不是文件（$ctype）"; fail=$((fail + 1)); rm -f "$tmp"; continue ;;
+              *html*) on_fail "$name  返回的是网页不是文件（$ctype）"; rm -f "$tmp"; continue ;;
             esac
-            if [ -n "$v" ] && ! grep -Fq -- "$v" "$tmp"; then
-              echo "FAIL  $name  内容里找不到版本号 $v"; fail=$((fail + 1)); rm -f "$tmp"; continue
+            if [ -z "$v" ]; then
+              on_warn "$name  地址里认不出版本号，跳过版本核对"
+            elif ! grep -Fq -- "$v" "$tmp"; then
+              on_fail "$name  内容里找不到版本号 $v"; rm -f "$tmp"; continue
             fi
             GOT["$u"]=$(sha256sum "$tmp" | cut -d' ' -f1)
             printf 'OK    %-34s %-9s %8s 字节\n' "$name" "${v:-–}" "$size"
@@ -74,15 +102,16 @@ jobs:
 
           # 没锁：按这次的结果生成基线，贴进 .github/deps.lock 即可
           if [ ! -f "$LOCK" ]; then
-            echo "WARN  没有 $LOCK，按本次结果生成基线（复制下面几行提交）"
+            on_warn "没有 $LOCK，按本次结果生成基线"
             lines=''
             for u in "${urls[@]}"; do
               lines+="$u ${GOT[$u]}"$'\n'
             done
             printf '%s' "$lines"
-            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-              { echo '## 依赖基线（新建 .github/deps.lock）'; echo '```'; printf '%s' "$lines"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-            fi
+            to_summary "## 依赖基线（新建 .github/deps.lock）"
+            to_summary '```'
+            to_summary "$lines"
+            to_summary '```'
             echo "依赖 ${#urls[@]} 个，无基线"
             exit 0
           fi
@@ -92,19 +121,17 @@ jobs:
             name=$(basename "${u%%\?*}")
             want="${PIN[$u]:-}"
             if [ -z "$want" ]; then
-              echo "WARN  $name  新增依赖，基线里没有（补一行：$u ${GOT[$u]}）"; warn=$((warn + 1))
+              on_warn "$name  新增依赖，基线里没有（补一行：$u ${GOT[$u]}）"
             elif [ "$want" != "${GOT[$u]}" ]; then
-              echo "FAIL  $name  地址没变但内容变了（期望 ${want:0:16}… 实际 ${GOT[$u]:0:16}…）"
-              fail=$((fail + 1))
+              on_fail "$name  地址没变但内容变了（期望 ${want:0:12}…${want: -4}，实际 ${GOT[$u]:0:12}…${GOT[$u]: -4}）"
             fi
           done
           for u in "${!PIN[@]}"; do
             hit=0
             for x in "${urls[@]}"; do [ "$x" = "$u" ] && { hit=1; break; }; done
-            if [ "$hit" -eq 0 ]; then
-              echo "WARN  基线里有、脚本头已不要：$u"; warn=$((warn + 1))
-            fi
+            if [ "$hit" -eq 0 ]; then on_warn "基线里有、脚本头已不要：$u"; fi
           done
 
           echo "依赖 ${#urls[@]} 个，失败 $fail，提示 $warn"
+          to_summary "依赖 ${#urls[@]} 个，失败 $fail，提示 $warn"
           [ "$fail" -eq 0 ]
