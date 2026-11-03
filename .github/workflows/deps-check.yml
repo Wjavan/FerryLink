@@ -30,16 +30,28 @@ jobs:
       - name: 逐个下载核对
         shell: bash
         run: |
-          set -u
+          set -uo pipefail
           SRC='网盘直链下载助手.user.js'
           LOCK='.github/deps.lock'
           SUMMARY="${GITHUB_STEP_SUMMARY:-}"
 
-          fail=0; warn=0
+          fail=0; warn=0; n_urls=0
           # 在 Actions 里发注解（页面显示黄/红条），本地跑打普通行，避免一条信息出现两遍
           on_fail() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::error::$*"; else echo "FAIL  $*"; fi; fail=$((fail + 1)); }
           on_warn() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::warning::$*"; else echo "WARN  $*"; fi; warn=$((warn + 1)); }
           to_summary() { [ -z "$SUMMARY" ] || printf '%s\n' "$*" >> "$SUMMARY"; }
+          # 失败出口也要留摘要，否则最该看的红跑反而没有汇总
+          finish() {
+            echo "依赖 $n_urls 个，失败 $fail，提示 $warn"
+            to_summary "依赖 $n_urls 个，失败 $fail，提示 $warn"
+            exit "$1"
+          }
+
+          # 脚本头里声明的全部外部依赖
+          mapfile -t urls < <(tr -d '\r' < "$SRC" \
+            | sed -nE 's#^// *@require[[:space:]]+(https?://[^[:space:]]+).*#\1#p' | sort -u)
+          n_urls=${#urls[@]}
+          if [ "$n_urls" -eq 0 ]; then on_fail '脚本头里没抽到依赖'; finish 1; fi
 
           declare -A PIN=()
           if [ -f "$LOCK" ]; then
@@ -49,15 +61,11 @@ jobs:
               case "$u" in ''|'#'*) continue ;; esac
               if [ -z "$s" ] || [ -n "$rest" ] || ! [[ "$s" =~ ^[0-9a-f]{64}$ ]]; then
                 on_fail "$LOCK 第 $n 行要『地址 + 空格 + 64 位 sha256』：$u"
-                exit 1
+                finish 1
               fi
               PIN["$u"]="$s"
             done < <(tr -d '\r' < "$LOCK")
           fi
-
-          mapfile -t urls < <(tr -d '\r' < "$SRC" \
-            | sed -nE 's#^// *@require[[:space:]]+(https?://[^[:space:]]+).*#\1#p' | sort -u)
-          if [ "${#urls[@]}" -eq 0 ]; then on_fail '脚本头里没抽到依赖'; exit 1; fi
 
           # 版本号两种写法都认：/1.2.3/ 与 @1.2.3/
           ver_of() {
@@ -104,7 +112,7 @@ jobs:
             printf 'OK    %-34s %-9s %8s 字节\n' "$name" "${v:-–}" "$size"
             rm -f "$tmp" "$errf"
           done
-          [ "$fail" -eq 0 ] || { echo "依赖 ${#urls[@]} 个，失败 $fail"; exit 1; }
+          [ "$fail" -eq 0 ] || finish 1
 
           # 没锁：按这次的结果生成基线，贴进 .github/deps.lock 即可
           if [ ! -f "$LOCK" ]; then
@@ -118,8 +126,7 @@ jobs:
             to_summary '```'
             to_summary "$lines"
             to_summary '```'
-            echo "依赖 ${#urls[@]} 个，无基线"
-            exit 0
+            finish 0
           fi
 
           # 有锁：地址增删只提示；地址没变但内容变了才算被替换
@@ -138,6 +145,4 @@ jobs:
             if [ "$hit" -eq 0 ]; then on_warn "基线里有、脚本头已不要：$u"; fi
           done
 
-          echo "依赖 ${#urls[@]} 个，失败 $fail，提示 $warn"
-          to_summary "依赖 ${#urls[@]} 个，失败 $fail，提示 $warn"
-          [ "$fail" -eq 0 ]
+          if [ "$fail" -eq 0 ]; then finish 0; else finish 1; fi
