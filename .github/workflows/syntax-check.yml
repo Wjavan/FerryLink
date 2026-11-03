@@ -82,8 +82,9 @@ jobs:
           def values(key):
               out = []
               for h in header:
-                  if h == key or h.startswith(key + ' '):
-                      out.append(h[len(key):].strip())
+                  parts = h.split(None, 1)
+                  if parts and parts[0] == key:
+                      out.append(parts[1].strip() if len(parts) > 1 else '')
               return out
 
           name = values('@name')
@@ -96,16 +97,23 @@ jobs:
               note('error', '缺少 @name')
           if not match:
               note('error', '缺少 @match')
+          # release.yml 用行首的 // @version 抠版本，这里必须认同一份写法
+          release_ver = re.search(r'(?m)^// @version[ \t]+([0-9][0-9.]*)', text)
           if not version:
               note('error', '缺少 @version')
           elif len(version) > 1:
               note('error', '@version 出现了 %d 次' % len(version))
+          elif not release_ver:
+              note('error', '@version 行必须写成行首的 // @version <版本>，否则 release.yml 抠不到')
+          elif version[0] != release_ver.group(1):
+              note('error', '@version 「%s」与 release.yml 抠到的「%s」不一致'
+                   % (version[0], release_ver.group(1)))
           elif not re.fullmatch(r'[0-9]+(?:\.[0-9]+)*', version[0]):
-              note('error', '@version 「%s」不是纯数字点分，release.yml 会抠错版本号' % version[0])
+              note('error', '@version 「%s」不是纯数字点分' % version[0])
 
           for m in match:
-              if not re.match(r'^(?:\*|https?)://[^/\s]+', m):
-                  note('error', '@match 「%s」缺少 scheme 或 host' % m)
+              if not re.fullmatch(r'(?:\*|https?)://[^/\s]+/\S*', m):
+                  note('error', '@match 「%s」不是完整的匹配式（需要 scheme://host/path）' % m)
 
           for r in require:
               if r.startswith('http://'):
@@ -124,7 +132,7 @@ jobs:
                       note('warning', '@grant 声明了 %s，代码里没有用到' % g)
 
           print('脚本 %d 字节，@version %s，@match %d 条，@require %d 条'
-                % (size, version[0] if version else '-', len(match), len(require)))
+                % (size, release_ver.group(1) if release_ver else '-', len(match), len(require)))
           if fails:
               print('元数据检查失败 %d 项' % len(fails))
               sys.exit(1)
