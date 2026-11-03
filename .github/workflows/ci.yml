@@ -39,10 +39,10 @@ jobs:
           LIMIT = 2 * 1024 * 1024
           CI = os.environ.get('GITHUB_ACTIONS') == 'true'
           fails = []
-          warns = []
 
           def note(kind, msg):
-              (fails if kind == 'error' else warns).append(msg)
+              if kind == 'error':
+                  fails.append(msg)
               print('::%s::%s' % (kind, msg) if CI else msg)
 
           try:
@@ -79,7 +79,6 @@ jobs:
                   continue
               code.append(line)
 
-          end_ok = saw_end
           if not (saw_start and saw_end):
               note('error', '元数据块缺少 ==UserScript== 起始或结束标记')
 
@@ -127,7 +126,7 @@ jobs:
           body = re.sub(r'/\*.*?\*/', '', '\n'.join(code), flags=re.S)
           grants = set(grant)
           # 头没收尾时后面全被当成头部，代码扫描没有意义
-          if end_ok:
+          if saw_end:
               used = set(re.findall(r'\bGM_[A-Za-z]\w*', body))
               used |= {'GM.' + m for m in re.findall(r'\bGM\.([A-Za-z]\w*)', body)}
               for g in sorted(used - grants):
