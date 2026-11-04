@@ -2734,15 +2734,21 @@
             let dump = null;
             try { dump = scope.locals && scope.locals.dump ? scope.locals.dump() : null; } catch (e) { }
             if (!dump) { try { dump = locals.dump(); } catch (e) { } }
-            let info = {};
-            Object.keys(dump || {}).forEach(k => {
-                let v = dump[k];
-                info[k] = (v && typeof v === 'object' && 'value' in v) ? v.value : v;
-            });
+            let has = dump && typeof dump === 'object';
+            let pick = (k) => {
+                let v = has ? dump[k] : null;
+                v = v && typeof v === 'object' && 'value' in v ? v.value : v;
+                return v === undefined || v === null ? '' : String(v);
+            };
+            let list = [];
+            try {
+                let raw = has && dump.file_list ? (dump.file_list.value || dump.file_list) : null;
+                list = Array.isArray(raw) ? raw : [];
+            } catch (e) { list = []; }
             let sekey = '';
             try { sekey = String(scope.currentSekey || ''); } catch (e) { }
             let m = /^\/s\/([^/?#]+)/.exec(location.pathname);
-            return { info: info, sekey: sekey, surl: m ? m[1] : '' };
+            return { pick: pick, list: list, sekey: sekey, surl: m ? m[1] : '' };
         },
         // 这条链路要带页面来源，用页面的 fetch 发
         _shareRequest(url, method, body) {
@@ -2776,21 +2782,28 @@
         async _shareLink() {
             let ref = this._shareInfo();
             if (!ref.surl) { Swal.close(); return base.renderErrorPanel('读不到分享标识，请刷新页面后重试', this); }
-            if (String(ref.info.loginstate) !== '1' || !ref.info.bdstoken) {
+            // 取链请求本身不带 bdstoken，判据只看页面登录态
+            if (ref.pick('loginstate') !== '1') {
                 Swal.close(); return base.renderErrorPanel('分享页下载需要登录百度网盘，请登录后重试', this);
             }
-            let listed = ref.info.file_list || [];
             let picked = this._shareSelected();
-            if (picked === null) picked = listed;                            // 沙箱里读不到列表模块
-            else if (!picked.length && listed.length === 1) picked = listed;  // 单文件分享页没有勾选框
+            if (picked === null) picked = ref.list;                              // 沙箱里读不到列表模块
+            else if (!picked.length && ref.list.length === 1) picked = ref.list;  // 单文件分享页没有勾选框
             if (!picked.length) { Swal.close(); return base.renderDownloadPanel([], this); }
             let files = picked.filter(v => v && +v.isdir !== 1);
             if (!files.length) { Swal.close(); return message.error('提示：分享页只支持文件，请勾选文件后再试！'); }
-            let tpl = await this._shareRequest(`${panInfo.pcs[2]}&surl=${ref.surl}&bdstoken=${ref.info.bdstoken}`, 'GET');
+            if (files.length > 40) { Swal.close(); return base.renderErrorPanel('一次最多取 40 个文件（当前 ' + files.length + ' 个），请勾选后再试', this); }
+            let bdstoken = ref.pick('bdstoken');
+            let tplUrl = panInfo.pcs[2] + '&surl=' + encodeURIComponent(ref.surl) + (bdstoken ? '&bdstoken=' + encodeURIComponent(bdstoken) : '');
+            let tpl = await this._shareRequest(tplUrl, 'GET');
             let sign = (tpl && tpl.data) || {};
             if (!sign.sign || !sign.timestamp) {
-                Swal.close(); return base.renderErrorPanel('取不到分享签名：' + String(JSON.stringify(tpl)).slice(0, 120), this);
+                let why = tpl && tpl.errno ? '（errno ' + tpl.errno + (tpl.errmsg ? '：' + tpl.errmsg : '') + '）' : '';
+                Swal.close(); return base.renderErrorPanel('取不到分享签名' + why + '，请刷新页面后重试', this);
             }
+            let dlUrl = panInfo.pcs[1] + '&sign=' + encodeURIComponent(sign.sign) + '&timestamp=' + encodeURIComponent(sign.timestamp);
+            let uk = encodeURIComponent(ref.pick('share_uk'));
+            let primaryid = encodeURIComponent(ref.pick('shareid'));
             let rows = [];
             for (let i = 0; i < files.length; i++) {
                 let it = files[i];
@@ -2798,14 +2811,19 @@
                 let fid = it.fs_id !== undefined && it.fs_id !== null ? it.fs_id
                     : (it.file_id !== undefined && it.file_id !== null ? it.file_id : it.id);
                 let row = { server_filename: it.server_filename || it.filename || '', size: it.size, isdir: it.isdir };
+                if (fid === undefined || fid === null || fid === '') {
+                    row.dlink = '读不到文件标识，请刷新页面后重试';
+                    rows.push(row);
+                    continue;
+                }
                 try {
                     let form = 'encrypt=0&product=share'
                         + '&extra=' + encodeURIComponent(JSON.stringify({ sekey: ref.sekey }))
-                        + '&timestamp=' + sign.timestamp
-                        + '&uk=' + encodeURIComponent(String(ref.info.share_uk || ''))
-                        + '&primaryid=' + encodeURIComponent(String(ref.info.shareid || ''))
+                        + '&timestamp=' + encodeURIComponent(sign.timestamp)
+                        + '&uk=' + uk
+                        + '&primaryid=' + primaryid
                         + '&fid_list=' + encodeURIComponent(JSON.stringify([String(fid)]));
-                    let res = await this._shareRequest(`${panInfo.pcs[1]}&sign=${sign.sign}&timestamp=${sign.timestamp}`, 'POST', form);
+                    let res = await this._shareRequest(dlUrl, 'POST', form);
                     if (res && res.errno === 0 && Array.isArray(res.list) && res.list.length) {
                         row = Object.assign(row, res.list[0]);
                     } else if (res && res.errno === 0 && typeof res.list === 'string') {
@@ -2870,12 +2888,8 @@
             }
         },
         getSelectedList() {
-            // 页面全局在沙箱里不一定直接可读，两个入口都试
-            let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
-            let ctx = null;
-            try { ctx = require('system-core:context/context.js'); } catch (e) { }
-            if (!ctx) { try { ctx = scope.require('system-core:context/context.js'); } catch (e) { } }
-            try { if (ctx) return ctx.instanceForSystem.list.getSelected(); } catch (e) { }
+            let got = this._shareSelected();
+            if (got) return got;   // 读不到（null）才退回到页面里那个 Vue 列表
             let panInfo = document.querySelector('.wp-s-core-pan');
             return panInfo && panInfo.__vue__ ? panInfo.__vue__.selectedList : [];
         },
