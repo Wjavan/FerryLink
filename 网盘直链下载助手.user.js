@@ -1180,7 +1180,17 @@
             $div.append($iframe);
             $('body').append($div);
         },
-        async iframeDownload(link) {
+        // 加速链用 filename 参数补齐文件名
+        _withName(link, filename) {
+            try {
+                if (!/^dl-c-[\w-]+\.drive\.quark\.cn$/i.test(new URL(link).hostname)) return link;
+            } catch (e) { return link; }
+            if (/[?&]filename=/i.test(link)) return link;
+            const name = base.fixFilename(filename || '');
+            if (!name) return link;
+            return link + (link.indexOf('?') >= 0 ? '&' : '?') + 'filename=' + encodeURIComponent(name);
+        },
+        async iframeDownload(link, filename) {
             if (!/^https?:\/\//i.test(link)) {
                 base.panelNotice('提示：下载链接无效！', 'error');
                 return false;
@@ -1200,6 +1210,7 @@
                 base.panelNotice('脚本取不回这条直链（' + why + '），已在新标签打开', 'info', 9000);
                 return { ok: true };
             }
+            link = base._withName(link, filename);
             this.createDownloadIframe();
             $('#downloadIframe').attr('src', link);
             return true;
@@ -1574,7 +1585,7 @@
                         base.panelNotice('已下载 ' + f.filename + '（' + base.sizeFormat(f.rawSize || 0) + '）', 'success', 5000);
                     } else { fail++; $st.html(MARK_NO); base.panelNotice('多链下载失败：' + r.why, 'error'); }
                 } else {
-                    const r = await base.iframeDownload(f.dlink);
+                    const r = await base.iframeDownload(f.dlink, f.filename);
                     if (r === true || (r && r.ok)) { ok++; $st.html(MARK_OK); }
                     else { fail++; $st.html(MARK_NO); if (r && r.why) base.panelNotice('下载失败：' + r.why, 'error', 9000); }
                 }
