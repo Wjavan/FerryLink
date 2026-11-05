@@ -1759,14 +1759,27 @@
             const pid = downloadState.protocol;
             if (pid === 'idm') {
                 $btn.text('正在推送 ' + files.length + ' 个任务至 IDM…').prop('disabled', true);
-                let ok = 0, fail = 0;
+                let ok = 0, fail = 0, rejected = '', stopped = false;
                 for (let f of files) {
-                    const r = await base.sendLinkToIDM(f.dlink, f.filename, f.rawSize || 0, base._cdnHeaders(f.dlink));
-                    if (r === 'success') { ok++; $('.fl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_OK); }
-                    else { fail++; $('.fl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_NO); }
+                    const $cell = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
+                    let r;
+                    try {
+                        r = stopped ? { ok: false, kind: 'down' } : await base.sendLinkToIDM(f.dlink, f.filename, f.rawSize || 0, base._cdnHeaders(f.dlink));
+                    } catch (e) {
+                        r = { ok: false, kind: 'error' };
+                    }
+                    if (r.ok) { ok++; $cell.html(MARK_OK); continue; }
+                    fail++; $cell.html(MARK_NO);
+                    if (r.kind === 'reject') rejected = r.state;
+                    if (r.kind === 'down') { rejected = ''; stopped = true; }   // 整批断掉，拒收提示会带偏
                 }
                 $btn.text('推送完成：成功 ' + ok + '，失败 ' + fail);
-                if (fail > 0) base.panelNotice('部分文件推送失败：IDM 未响应', 'error'); else if (ok > 0) base.panelNotice('已推送至 IDM', 'success');
+                if (fail > 0) {
+                    const why = rejected ? 'IDM 拒收任务（状态 ' + rejected + '），请反馈脚本版本'
+                        : ok > 0 ? '已推送 ' + ok + ' 个，' + fail + ' 个未完成，可重试'
+                        : 'IDM 未响应，请检查 IDM 浏览器插件是否启用';
+                    base.panelNotice(why, ok > 0 ? 'warning' : 'error');
+                } else if (ok > 0) base.panelNotice('已推送至 IDM', 'success');
                 setTimeout(() => base._updateMainButton(), 4000);
             } else if (pid === 'rpc') {
                 const d = base.getValue('setting_rpc_domain'), p = base.getValue('setting_rpc_port'), pa = base.getValue('setting_rpc_path');
@@ -1975,7 +1988,7 @@
             const list = base.settingChoice('setting_idm_rpc') || [];
             const rpc = list.find(i => i && i.default) || list[0] || { id: '1' };
             if (!this.sendLinkToIDM.lock) this.sendLinkToIDM.lock = Promise.resolve();
-            return this.sendLinkToIDM.lock = this.sendLinkToIDM.lock.then(async () => {
+            const run = this.sendLinkToIDM.lock.then(async () => {
                 headers = this.standHeaders(headers);
                 if (!this.sendLinkToIDM.seq) this.sendLinkToIDM.seq = 1;
                 const seq = this.sendLinkToIDM.seq;
@@ -2009,17 +2022,23 @@
                         // withCredentials 关掉会 403
                         withCredentials: true,
                         timeout: 15000,
-                        onload: (r) => resolve(r.responseText || r.response || ''),
-                        ontimeout: () => resolve(''),
-                        onerror: () => resolve(''),
+                        onload: (r) => resolve({ status: r.status, text: r.responseText || r.response || '' }),
+                        ontimeout: () => resolve(null),
+                        onerror: () => resolve(null),
                     });
                 });
-                const res = raw || false;
                 this.sendLinkToIDM.seq++;
-                if (res && String(res).endsWith('3;')) {
-                    return 'success';
-                }
-                return 'fail';
+                // 只认报文尾 3;：头没文档，扩展也不读
+                const body = raw ? String(raw.text).trim() : '';
+                if (raw && raw.status === 200 && /:3;$/.test(body)) return { ok: true };
+                // 只有 404/没响应才短路，其它非 200 不连坐
+                if (!raw || raw.status === 404) return { ok: false, kind: 'down' };
+                if (raw.status !== 200) return { ok: false, kind: 'http' };
+                return { ok: false, kind: 'reject', state: (/:(\d+);$/.exec(body) || [])[1] || '未知' };
+            });
+            // 单次异常不能毒住后续推送
+            return this.sendLinkToIDM.lock = run.catch((e) => {
+                return { ok: false, kind: 'error' };
             });
         },
 
