@@ -2084,7 +2084,10 @@
             let tries = 0, running = false;
             const done = () => {
                 try {
-                    if (guard && !guard()) return true;   // 页型不对，这轮不必挂
+                    if (guard && !guard()) {   // 页型不对：连残留的按钮一起撤掉，别留个能点的孤儿
+                        $('.fl-button').remove();
+                        return true;
+                    }
                     if ($('.fl-button').length) return true;
                     return mount() === true;
                 } catch (e) {
@@ -2102,11 +2105,15 @@
                 };
                 step();
             };
+            this._flRetry = () => { tries = 0; retry(); };   // 回调一律走最新一次挂载
             retry();
             if (!this._flWatching) {
                 this._flWatching = true;
-                // 正在重试的链还在跑就别重置计数，否则密集重绘会让一条链无限续命
-                this.watchDom(() => { if (running) return; tries = 0; retry(); });
+                this.watchDom(() => { if (!running) this._flRetry && this._flRetry(); });
+                // 不重画整块的路由切换只能靠事件：hash 路由不一定触发 DOM 变化
+                const onRoute = () => setTimeout(() => this._flRetry && this._flRetry(), 150);
+                window.addEventListener('hashchange', onRoute);
+                window.addEventListener('popstate', onRoute);
             }
         },
         addFerryLinkStyle() {
@@ -3580,13 +3587,7 @@
         addPageListener() {
             if (this._listenerBound) return;
             this._listenerBound = true;
-            // hash 路由切页会整块重渲染，按钮得重新挂
-            window.addEventListener('hashchange', async () => {
-                await base.sleep(150);
-                pageNum = this.detectPage();
-                if (pageNum !== 'home') { $('.quark-button.fl-button').remove(); return; }
-                if ($('.quark-button.fl-button').length === 0) this.addButton();
-            });
+            // 切页的重挂与撤除交给 base.mountWithRetry 里的路由监听，不在这里各写一份
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
                 Swal.showLoading();
@@ -3727,9 +3728,9 @@
             }
         },
         detectPage() {
-            // pathname 恒为 /list，靠 hash 区分页面
+            // pathname 恒为 /list，靠 hash 区分页面；#/ 是落地路由，也算文件列表
             let hash = location.hash || '';
-            if (!hash || /^#\/list\/all(?:$|[?/])/.test(hash)) return 'home';
+            if (!hash || hash === '#/' || /^#\/list\/all(?:$|[?/])/.test(hash)) return 'home';
             return '';
         },
         isOnlyFolder() {
