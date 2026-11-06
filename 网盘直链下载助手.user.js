@@ -2079,12 +2079,12 @@
                 requestAnimationFrame(() => { if (!$('.fl-button').length) callback(); });
             }).observe(document.body, { childList: true, subtree: true });
         },
-        // 框架重渲染会把按钮一起清掉，listenElement 又只回调一次：立刻挂 + 短重试 + 盯 DOM
+        // 重渲染会清掉按钮：立刻挂 + 短重试 + 盯 DOM
         mountWithRetry(mount, guard) {
             let tries = 0, running = false;
             const done = () => {
                 try {
-                    if (guard && !guard()) {   // 页型不对：连残留的按钮一起撤掉，别留个能点的孤儿
+                    if (guard && !guard()) {   // 页型不对就撤掉，不留能点的孤儿
                         $('.fl-button').remove();
                         return true;
                     }
@@ -2095,7 +2095,7 @@
                     return false;
                 }
             };
-            // 单飞：watchDom 在密集重绘时每 50ms 就能触发一次，不拦会叠出多条重试链
+            // 单飞：密集重绘时不叠多条重试链
             const retry = () => {
                 if (running) return;
                 running = true;
@@ -2105,12 +2105,12 @@
                 };
                 step();
             };
-            this._flRetry = () => { tries = 0; retry(); };   // 回调一律走最新一次挂载
+            this._flRetry = () => { tries = 0; retry(); };
             retry();
             if (!this._flWatching) {
                 this._flWatching = true;
                 this.watchDom(() => { if (!running) this._flRetry && this._flRetry(); });
-                // 不重画整块的路由切换只能靠事件：hash 路由不一定触发 DOM 变化
+                // hash 路由不重画整块时没有 DOM 事件，只能靠这两个监听重新判页型
                 const onRoute = () => setTimeout(() => this._flRetry && this._flRetry(), 150);
                 window.addEventListener('hashchange', onRoute);
                 window.addEventListener('popstate', onRoute);
@@ -2777,7 +2777,6 @@
             let path = location.pathname, hash = location.hash || '';
             if (/^\/disk\/home/.test(path)) return 'home';
             if (/^\/disk\/main/.test(path)) {
-                // 列表与回收站 pathname 相同，靠 hash 区分
                 if (/^#\/recyclebin/.test(hash)) return '';
                 return 'main';
             }
@@ -3027,7 +3026,6 @@
 
         detectPage() {
             let path = location.pathname;
-            // 回收站也挂在 /drive 下，得排除掉
             if (/^\/(drive)/.test(path) && !/recycle-bin/.test(path)) return 'home';
             return '';
         },
@@ -3206,7 +3204,6 @@
         },
         detectPage() {
             let path = location.pathname;
-            // 回收站 pathname 也在 /web/main 下，别把它当文件列表
             if (/^\/web\/main/.test(path) && !/recycle/i.test(path)) return 'home';
             return '';
         },
@@ -3587,7 +3584,6 @@
         addPageListener() {
             if (this._listenerBound) return;
             this._listenerBound = true;
-            // 切页的重挂与撤除交给 base.mountWithRetry 里的路由监听，不在这里各写一份
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
                 Swal.showLoading();
@@ -3728,7 +3724,7 @@
             }
         },
         detectPage() {
-            // pathname 恒为 /list，靠 hash 区分页面；#/ 是落地路由，也算文件列表
+            // pathname 恒为 /list，靠 hash 判页；#/ 也是落地路由
             let hash = location.hash || '';
             if (!hash || hash === '#/' || /^#\/list\/all(?:$|[?/])/.test(hash)) return 'home';
             return '';
@@ -3985,7 +3981,6 @@
         detectPage() {
             let path = location.pathname, hash = location.hash || '';
             if (/^\/w/.test(path)) {
-                // pathname 恒为 /w，靠 hash 区分页面
                 if (/^#\/(recyclebin|recycle)/.test(hash)) return '';
                 return 'home';
             }
