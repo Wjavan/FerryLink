@@ -2079,6 +2079,36 @@
                 requestAnimationFrame(() => { if (!$('.fl-button').length) callback(); });
             }).observe(document.body, { childList: true, subtree: true });
         },
+        // 框架重渲染会把按钮一起清掉，listenElement 又只回调一次：立刻挂 + 短重试 + 盯 DOM
+        mountWithRetry(mount, guard) {
+            let tries = 0, running = false;
+            const done = () => {
+                try {
+                    if (guard && !guard()) return true;   // 页型不对，这轮不必挂
+                    if ($('.fl-button').length) return true;
+                    return mount() === true;
+                } catch (e) {
+                    console.warn('[FerryLink] 挂载回调出错，稍后重试：', e && e.message);
+                    return false;
+                }
+            };
+            // 单飞：watchDom 在密集重绘时每 50ms 就能触发一次，不拦会叠出多条重试链
+            const retry = () => {
+                if (running) return;
+                running = true;
+                const step = () => {
+                    if (done() || ++tries > 10) { running = false; return; }
+                    setTimeout(step, 300);
+                };
+                step();
+            };
+            retry();
+            if (!this._flWatching) {
+                this._flWatching = true;
+                // 正在重试的链还在跑就别重置计数，否则密集重绘会让一条链无限续命
+                this.watchDom(() => { if (running) return; tries = 0; retry(); });
+            }
+        },
         addFerryLinkStyle() {
             color = base.settingChoice('setting_theme_color');
             const darkRules = `
@@ -2458,19 +2488,15 @@
             });
         },
         addButton() {
-            if (!pageNum) return;
-            let $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><div style="color:#fff;background: ${color};border-color:${color}" class="g-button g-button-blue"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></div>`);
-            if (pageNum === 'main') {
-                $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; padding: 8px 16px; border: none;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
-            }
-            const sel = pageNum === 'home' ? panInfo.btn.home : panInfo.btn.main;
-            const tryInject = () => {
-                let $toolWrap = $(sel);
-                if (!$toolWrap.length || $('.fl-button').length) return false;
-                $toolWrap.prepend($button);
+            const $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><div style="color:#fff;background: ${color};border-color:${color}" class="g-button g-button-blue"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></div>`);
+            const $mainButton = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; padding: 8px 16px; border: none;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
+            base.mountWithRetry(() => {
+                pageNum = this.detectPage();
+                let $toolWrap = $(pageNum === 'home' ? panInfo.btn.home : panInfo.btn.main);
+                if (!$toolWrap.length) return false;
+                $toolWrap.prepend(pageNum === 'main' ? $mainButton : $button);
                 return true;
-            };
-            if (!tryInject()) base.listenElement(sel, tryInject);
+            }, () => !!this.detectPage());
             this.setBDUSS();
             this.addPageListener();
         },
@@ -2741,9 +2767,13 @@
             }
         },
         detectPage() {
-            let path = location.pathname;
+            let path = location.pathname, hash = location.hash || '';
             if (/^\/disk\/home/.test(path)) return 'home';
-            if (/^\/disk\/main/.test(path)) return 'main';
+            if (/^\/disk\/main/.test(path)) {
+                // 列表与回收站 pathname 相同，靠 hash 区分
+                if (/^#\/recyclebin/.test(hash)) return '';
+                return 'main';
+            }
             return '';
         },
         async initFerryLink() {
@@ -2842,30 +2872,24 @@
                     } catch (e) { return ''; }
                 },
         addButton() {
-            if (!pageNum) return;
-            let $toolWrap;
             let $button = $(`<div class="ali-button fl-button"><svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M853.333 938.667H170.667a85.333 85.333 0 0 1-85.334-85.334v-384A85.333 85.333 0 0 1 170.667 384H288a32 32 0 0 1 0 64H170.667a21.333 21.333 0 0 0-21.334 21.333v384a21.333 21.333 0 0 0 21.334 21.334h682.666a21.333 21.333 0 0 0 21.334-21.334v-384A21.333 21.333 0 0 0 853.333 448H736a32 32 0 0 1 0-64h117.333a85.333 85.333 0 0 1 85.334 85.333v384a85.333 85.333 0 0 1-85.334 85.334z" fill="#fff"/><path d="M715.03 543.552a32.81 32.81 0 0 0-46.251 0L554.005 657.813v-540.48a32 32 0 0 0-64 0v539.734L375.893 543.488a32.79 32.79 0 0 0-46.229 0 32.427 32.427 0 0 0 0 46.037l169.557 168.811a32.81 32.81 0 0 0 46.251 0l169.557-168.81a32.47 32.47 0 0 0 0-45.974z" fill="#FF9C00"/></svg><span>下载助手</span></div>`);
-            if (pageNum === 'home') {
-                const fallbacks = [
-                    panInfo.btn.home,
-                    '[class*="header--"] [class*="actions--"]',
-                    '[class*="file-list-header"] [class*="action"]',
-                    'header [class*="upload"]',
-                ];
-                const tryInject = () => {
-                    for (const sel of fallbacks) {
-                        let $el = $(sel);
-                        if ($el.length && $('.fl-button').length === 0) {
-                            $el.append($button);
-                            return true;
-                        }
+            const fallbacks = [
+                panInfo.btn.home,
+                '[class*="header--"] [class*="actions--"]',
+                '[class*="file-list-header"] [class*="action"]',
+                'header [class*="upload"]',
+            ];
+            const tryInject = () => {
+                for (const sel of fallbacks) {
+                    let $el = $(sel);
+                    if ($el.length) {
+                        $el.append($button);
+                        return true;
                     }
-                    return false;
-                };
-                if (!tryInject()) {
-                    fallbacks.forEach(sel => base.listenElement(sel, tryInject));
                 }
-            }
+                return false;
+            };
+            base.mountWithRetry(() => { pageNum = this.detectPage(); return tryInject(); }, () => this.detectPage() === 'home');
             this.addPageListener();
         },
         async getPCSLink() {
@@ -2996,7 +3020,8 @@
 
         detectPage() {
             let path = location.pathname;
-            if (/^\/(drive)/.test(path)) return 'home';
+            // 回收站也挂在 /drive 下，得排除掉
+            if (/^\/(drive)/.test(path) && !/recycle-bin/.test(path)) return 'home';
             return '';
         },
         isOnlyFolder() {
@@ -3046,17 +3071,14 @@
             }
         },
         addButton() {
-            if (!pageNum) return;
-            let $toolWrap;
             let $button = $(`<div class="tianyi-button fl-button">下载助手</div>`);
-            if (pageNum === 'home') {
-                            base.listenElement(panInfo.btn.home, () => {
-                                let container = document.querySelector(panInfo.btn.home);
-                                if (container && $('.fl-button').length === 0) {
-                                                    this._insertBeforeUpload(container, $button);
-                                                }
-                            })
-                        }
+            base.mountWithRetry(() => {
+                pageNum = this.detectPage();
+                let container = document.querySelector(panInfo.btn.home);
+                if (!container) return false;
+                this._insertBeforeUpload(container, $button);
+                return true;
+            }, () => this.detectPage() === 'home');
             this.addPageListener();
         },
         async getToken() {
@@ -3177,7 +3199,8 @@
         },
         detectPage() {
             let path = location.pathname;
-            if (/^\/web\/main/.test(path)) return 'home';
+            // 回收站 pathname 也在 /web/main 下，别把它当文件列表
+            if (/^\/web\/main/.test(path) && !/recycle/i.test(path)) return 'home';
             return '';
         },
         isOnlyFolder() {
@@ -3557,12 +3580,12 @@
         addPageListener() {
             if (this._listenerBound) return;
             this._listenerBound = true;
-            window.addEventListener('hashchange', async (e) => {
-                let home = 'https://pan.quark.cn/list#/', all = 'https://pan.quark.cn/list#/list/all';
-                if (e.oldURL === home && e.newURL === all) return;
+            // hash 路由切页会整块重渲染，按钮得重新挂
+            window.addEventListener('hashchange', async () => {
                 await base.sleep(150);
-                if ($('.quark-button').length > 0) return;
-                this.addButton();
+                pageNum = this.detectPage();
+                if (pageNum !== 'home') { $('.quark-button.fl-button').remove(); return; }
+                if ($('.quark-button.fl-button').length === 0) this.addButton();
             });
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
@@ -3571,15 +3594,14 @@
             });
         },
         addButton() {
-            if (!pageNum) return;
-            let $toolWrap;
-            let $button = $(`<div class="quark-button fl-button"><svg width="22" height="22" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 2-2z"/><path d="M14 8h1.553c.85 0 1.16.093 1.47.267.311.174.556.43.722.756.166.326.255.65.255 1.54v4.873c0 .892-.089 1.215-.255 1.54-.166.327-.41.583-.722.757-.31.174-.62.267-1.47.267H6.447c-.85 0-1.16-.093-1.47-.267a1.778 1.778 0 01-.722-.756c-.166-.326-.255-.65-.255-1.54v-4.873c0-.892.089-1.215.255-1.54.166-.327.41-.583.722-.757.31-.174.62-.267 1.47-.267H11"/><path stroke-linecap="round" stroke-linejoin="round" d="M11 3v10"/></g></svg><span>下载助手</span></div>`);
-            if (pageNum === 'home') {
-                base.listenElement(panInfo.btn.home, () => {
-                    $toolWrap = $(panInfo.btn.home);
-                    $('.fl-button').length === 0 && $toolWrap.prepend($button);
-                });
-            }
+            const $button = $(`<div class="quark-button fl-button"><svg width="22" height="22" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 2-2z"/><path d="M14 8h1.553c.85 0 1.16.093 1.47.267.311.174.556.43.722.756.166.326.255.65.255 1.54v4.873c0 .892-.089 1.215-.255 1.54-.166.327-.41.583-.722.757-.31.174-.62.267-1.47.267H6.447c-.85 0-1.16-.093-1.47-.267a1.778 1.778 0 01-.722-.756c-.166-.326-.255-.65-.255-1.54v-4.873c0-.892.089-1.215.255-1.54.166-.327.41-.583.722-.757.31-.174.62-.267 1.47-.267H11"/><path stroke-linecap="round" stroke-linejoin="round" d="M11 3v10"/></g></svg><span>下载助手</span></div>`);
+            base.mountWithRetry(() => {
+                pageNum = this.detectPage();
+                let $toolWrap = $(panInfo.btn.home);
+                if (!$toolWrap.length) return false;
+                $toolWrap.prepend($button);
+                return true;
+            }, () => this.detectPage() === 'home');
         },
         // 夸克不给 token 就派到限速节点，约 30KB/s
         async getAccelToken() {
@@ -3705,8 +3727,9 @@
             }
         },
         detectPage() {
-            let path = location.pathname;
-            if (/^\/(list)/.test(path)) return 'home';
+            // pathname 恒为 /list，靠 hash 区分页面
+            let hash = location.hash || '';
+            if (!hash || /^#\/list\/all(?:$|[?/])/.test(hash)) return 'home';
             return '';
         },
         isOnlyFolder() {
@@ -3750,15 +3773,14 @@
             });
         },
         addButton() {
-            if (!pageNum) return;
-            let $toolWrap;
             let $button = $(`<div class="yidong-button fl-button"><svg viewBox="0 0 40 40" width="20" height="20" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M19 5h2v1h-2zM18 6h4v1h-4zM18 7h4v1h-4zM18 8h4v1h-4zM18 9h4v1h-4zM18 10h4v1h-4zM18 11h4v1h-4zM18 12h4v1h-4zM18 13h4v1h-4zM18 14h4v1h-4zM18 15h4v1h-4zM18 16h4v1h-4zM18 17h4v1h-4zM12 18h3v1h-3zM18 18h4v1h-4zM25 18h3v1h-3zM12 19h3v1h-3zM18 19h4v1h-4zM25 19h3v1h-3zM12 20h4v1h-4zM18 20h4v1h-4zM24 20h4v1h-4zM13 21h4v1h-4zM18 21h4v1h-4zM23 21h4v1h-4zM14 22h12v1h-12zM14 23h12v1h-12zM15 24h10v1h-10zM16 25h8v1h-8zM17 26h6v1h-6zM5 27h2v1h-2zM18 27h4v1h-4zM33 27h2v1h-2zM4 28h4v1h-4zM19 28h2v1h-2zM32 28h4v1h-4zM4 29h4v1h-4zM32 29h4v1h-4zM4 30h4v1h-4zM32 30h4v1h-4zM4 31h4v1h-4zM32 31h4v1h-4zM4 32h32v1h-32zM4 33h32v1h-32zM4 34h32v1h-32zM5 35h30v1h-30z"></path></svg>下载助手</div>`);
-            if (pageNum === 'home') {
-                base.listenElement(panInfo.btn.home, () => {
-                    $toolWrap = $(panInfo.btn.home);
-                    $('.fl-button').length === 0 && $toolWrap.prepend($button);
-                })
-            }
+            base.mountWithRetry(() => {
+                pageNum = this.detectPage();
+                let $toolWrap = $(panInfo.btn.home);
+                if (!$toolWrap.length) return false;
+                $toolWrap.prepend($button);
+                return true;
+            }, () => this.detectPage() === 'home');
             this.addPageListener();
         },
         async getFileUrlByOnce(item, index) {
@@ -3960,8 +3982,12 @@
             return [];
         },
         detectPage() {
-            let path = location.pathname;
-            if (/^\/w/.test(path)) return 'home';
+            let path = location.pathname, hash = location.hash || '';
+            if (/^\/w/.test(path)) {
+                // pathname 恒为 /w，靠 hash 区分页面
+                if (/^#\/(recyclebin|recycle)/.test(hash)) return '';
+                return 'home';
+            }
             return '';
         },
         isOnlyFolder() {
