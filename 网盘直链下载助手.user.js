@@ -35,6 +35,9 @@
 // @require           https://registry.npmmirror.com/jquery/3.7.0/files/dist/jquery.min.js
 // @require           https://registry.npmmirror.com/sweetalert2/10.16.6/files/dist/sweetalert2.all.min.js
 // @require           https://registry.npmmirror.com/js-md5/0.7.3/files/build/md5.min.js
+// @connect           *
+// @connect           localhost
+// @connect           127.0.0.1
 // @connect           baidu.com
 // @connect           baidupcs.com
 // @connect           jomodns.com
@@ -50,9 +53,6 @@
 // @connect           ctfile.com
 // @connect           tv002.com
 // @connect           ctcontents.com
-// @connect           localhost
-// @connect           127.0.0.1
-// @connect           *
 // @grant             GM_xmlhttpRequest
 // @grant             GM_setClipboard
 // @grant             GM_setValue
