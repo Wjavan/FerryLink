@@ -2506,9 +2506,13 @@
             const $shareButton = $(`<a class="fl-button fl-button-share" href="javascript:;" title="下载助手">${BTN_ICON}<span>下载助手</span></a>`);
             base.mountWithRetry(() => {
                 pageNum = this.detectPage();
-                let $toolWrap = $(pageNum === 'share' ? this._shareMountSel() : (panInfo.btn[pageNum] || panInfo.btn.main));
+                let sel = pageNum === 'share' ? this._shareMountSel() : (panInfo.btn[pageNum] || panInfo.btn.main);
+                let $toolWrap = $(sel);
                 if (!$toolWrap.length) return false;
-                $toolWrap.prepend(pageNum === 'main' ? $mainButton : (pageNum === 'share' ? $shareButton : $button));
+                let $btn = pageNum === 'main' ? $mainButton : (pageNum === 'share' ? $shareButton : $button);
+                // 单文件页是页主视角，整页没有按钮组，只能挂在顶栏右侧
+                if (pageNum === 'share' && !/x-button-box/.test(sel)) $toolWrap.append($btn);
+                else $toolWrap.prepend($btn);
                 return true;
             }, () => !!this.detectPage());
             this.setBDUSS();
@@ -2775,7 +2779,7 @@
         },
         // 分享页有三种前端，按钮区位置不一样，取第一个真实存在的
         _shareMountSel() {
-            let cands = ['.module-share-bottom-bar .x-button-box', '.module-share-top-bar .x-button-box', '.module-share-top-bar .bar', '.module-share-top-bar'];
+            let cands = ['.module-share-bottom-bar .x-button-box', '.module-share-top-bar .x-button-box', '.module-share-top-bar .bar', '.module-share-top-bar', '.share-header-bar', '.module-share-header'];
             for (let i = 0; i < cands.length; i++) {
                 if (document.querySelector(cands[i])) return cands[i];
             }
