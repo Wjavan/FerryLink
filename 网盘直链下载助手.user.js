@@ -2811,9 +2811,10 @@
             }
             let read = this._shareSelected();     // 数组=读到了，null=页面上拿不到
             let picked = read || [];
-            // 页面上没有任何勾选控件时，站点自己按「下载」也是整页下
-            let noPicker = !document.querySelector('dd.JS-list-view-item, .wp-checkbox, input[type=checkbox]');
-            if (!picked.length && (noPicker || ref.list.length === 1)) picked = ref.list;
+            if (!picked.length && ref.list.length === 1) picked = ref.list;   // 单文件分享页没有勾选框
+            // 页面自己就没有勾选控件（站点按「下载」也是整页下）；只在列表模块可用时认这种情况
+            let noPicker = !document.querySelector('dd.JS-list-view-item[data-file-key], .wp-checkbox, input[type=checkbox]');
+            if (!picked.length && read && noPicker) picked = ref.list;
             if (!picked.length && read === null) {
                 Swal.close(); return base.renderErrorPanel('读不到页面的勾选状态，请刷新页面后重试', this);
             }
