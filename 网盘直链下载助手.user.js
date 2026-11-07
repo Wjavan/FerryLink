@@ -2217,8 +2217,10 @@
             .ctfile-button:active { background: #003eb3; border-color: #003eb3; }
             .ctfile-button:focus-visible { outline: 2px solid #0958d9; outline-offset: 2px; }
             .ctfile-button svg { width: 18px; height: 18px; flex-shrink: 0; }
-            .fl-button.fl-button-share { display: inline-flex; align-items: center; box-sizing: border-box; height: 36px; margin: 0 5px; border-radius: 20px; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1; white-space: nowrap; flex-shrink: 0; }
-            .fl-button.fl-button-share:hover { box-shadow: inset 0 0 0 999px rgba(9, 170, 255, .1); }
+            .fl-button.fl-button-share { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; height: 36px; padding: 0 16px; margin: 0 8px 0 0; border: 1px solid #09aaff; border-radius: 18px; background: #f0faff; color: #09aaff; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
+            .fl-button.fl-button-share:hover { background: #e1f4ff; }
+            .fl-button.fl-button-share:focus-visible { outline: 2px solid #09aaff; outline-offset: 2px; }
+            .fl-button.fl-button-share svg { width: 16px; height: 16px; flex-shrink: 0; }
             .ctfile-button-sm { height: 30px; padding: 0 14px; gap: 6px; font-size: 14px; font-weight: 600; }
             .ctfile-button-sm svg { width: 16px; height: 16px; }
             /* 跟「上传/上传文件夹」同款：色值、高度、圆角挂载时从旁边按钮读回来（--fl-*） */
@@ -2501,10 +2503,10 @@
         addButton() {
             const $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><div style="color:#fff;background: ${color};border-color:${color}" class="g-button g-button-blue"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></div>`);
             const $mainButton = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; padding: 8px 16px; border: none;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
-            const $shareButton = $(`<a class="g-button tools-share-V20-btn fl-button fl-button-share" href="javascript:;" title="下载助手"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></a>`);
+            const $shareButton = $(`<a class="fl-button fl-button-share" href="javascript:;" title="下载助手">${BTN_ICON}<span>下载助手</span></a>`);
             base.mountWithRetry(() => {
                 pageNum = this.detectPage();
-                let $toolWrap = $(panInfo.btn[pageNum] || panInfo.btn.main);
+                let $toolWrap = $(pageNum === 'share' ? this._shareMountSel() : (panInfo.btn[pageNum] || panInfo.btn.main));
                 if (!$toolWrap.length) return false;
                 $toolWrap.prepend(pageNum === 'main' ? $mainButton : (pageNum === 'share' ? $shareButton : $button));
                 return true;
@@ -2771,6 +2773,14 @@
                 ? Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson)
                 : Promise.resolve(base.post(url, body, { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': location.origin }, 'text')).then(toJson);
         },
+        // 分享页有三种前端，按钮区位置不一样，取第一个真实存在的
+        _shareMountSel() {
+            let cands = ['.module-share-bottom-bar .x-button-box', '.module-share-top-bar .x-button-box', '.module-share-top-bar .bar', '.module-share-top-bar'];
+            for (let i = 0; i < cands.length; i++) {
+                if (document.querySelector(cands[i])) return cands[i];
+            }
+            return panInfo.btn.share;
+        },
         // 列表视图的勾选挂在行上，行带的 data-file-key 就是 fs_id
         _shareChecked() {
             let rows = document.querySelectorAll('dd.JS-list-view-item[data-file-key]');
@@ -2801,7 +2811,9 @@
             }
             let read = this._shareSelected();     // 数组=读到了，null=页面上拿不到
             let picked = read || [];
-            if (!picked.length && ref.list.length === 1) picked = ref.list;   // 单文件分享页没有勾选框
+            // 页面上没有任何勾选控件时，站点自己按「下载」也是整页下
+            let noPicker = !document.querySelector('dd.JS-list-view-item, .wp-checkbox, input[type=checkbox]');
+            if (!picked.length && (noPicker || ref.list.length === 1)) picked = ref.list;
             if (!picked.length && read === null) {
                 Swal.close(); return base.renderErrorPanel('读不到页面的勾选状态，请刷新页面后重试', this);
             }
