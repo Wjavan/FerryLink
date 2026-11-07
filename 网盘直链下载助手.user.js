@@ -2504,7 +2504,6 @@
             const $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><div style="color:#fff;background: ${color};border-color:${color}" class="g-button g-button-blue"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></div>`);
             const $mainButton = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; padding: 8px 16px; border: none;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
             const $shareButton = $(`<a class="fl-button fl-button-share" href="javascript:;" title="下载助手">${BTN_ICON}<span>下载助手</span></a>`);
-            // 跟设置里的主题色走，别写死成一种蓝
             if (color) $shareButton.css({ color: color, borderColor: color, background: color + '1f' });
             base.mountWithRetry(() => {
                 pageNum = this.detectPage();
@@ -2621,7 +2620,6 @@
         },
         async getPCSLink(maxRequestTime = 1) {
             selectedFiles = this.getSelectedList();
-            // 分享页的取链链路与个人网盘不是一套
             if (pageNum === 'share') return this._shareLink();
             let fidArray = this._getFidArray(), res;
             const authFail = () => { Swal.close(); return base.renderErrorPanel('百度授权未完成：请刷新重试，仍失败请确认已登录百度', this); };
@@ -2736,7 +2734,6 @@
                 base.renderDownloadPanel(normalized, this);
             }
         },
-        // 列表与分享标识都在页面全局里，surl 在路径上
         _shareInfo() {
             let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
             let dump = null;
@@ -2760,9 +2757,7 @@
         },
         // 这条链路要带页面来源，用页面的 fetch 发
         _shareRequest(url, method, body) {
-            // 拿不到 unsafeWindow 就用沙箱的 window
             let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
-            // 两条通道一种给对象一种给文本，都得吃
             let toJson = (t) => {
                 if (t && typeof t === 'object') return t;
                 try { return JSON.parse(t); } catch (e) {
@@ -2782,7 +2777,6 @@
                 ? Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson)
                 : Promise.resolve(base.post(url, body, { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': location.origin }, 'text')).then(toJson);
         },
-        // 各版本按钮区不同，取第一个存在的
         _shareMountSel() {
             let cands = ['.module-share-bottom-bar .x-button-box', '.module-share-top-bar .x-button-box', '.module-share-top-bar .bar', '.module-share-top-bar', '.share-header-bar', '.module-share-header'];
             for (let i = 0; i < cands.length; i++) {
@@ -2813,7 +2807,6 @@
             return pageNum === 'share' ? this._shareChecked() : null;
         },
         async _shareLink() {
-            // 连点复用同一条链，请求别翻倍
             if (this._shareChain) return this._shareChain;
             this._shareChain = this._shareFetch();
             try { return await this._shareChain; } finally { this._shareChain = null; }
@@ -2894,7 +2887,6 @@
             return list.map(v => {
                 let dlink = '';
                 if (v.dlink) {
-                    // 分享页取链不经过授权，没有令牌就别挂空参数
                     dlink = /^https?:\/\//.test(v.dlink) && token
                         ? v.dlink + '&access_token=' + token
                         : v.dlink;
