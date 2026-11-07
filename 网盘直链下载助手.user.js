@@ -2739,7 +2739,7 @@
             let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
             let dump = null;
             try { dump = scope.locals && scope.locals.dump ? scope.locals.dump() : null; } catch (e) { }
-            if (!dump) { try { dump = locals.dump(); } catch (e) { } }
+            if (!dump && scope !== window) { try { dump = window.locals.dump(); } catch (e) { } }
             let has = dump && typeof dump === 'object';
             let pick = (k) => {
                 let v = has ? dump[k] : null;
@@ -2787,7 +2787,7 @@
         },
         // 列表视图的勾选挂在行上，行带的 data-file-key 就是 fs_id
         _shareChecked() {
-            let rows = document.querySelectorAll('dd.JS-list-view-item[data-file-key]');
+            let rows = document.querySelectorAll('.JS-list-view-item[data-file-key]');
             if (!rows.length) return null;
             let picked = [];
             rows.forEach(r => {
@@ -2807,6 +2807,9 @@
             return this._shareChecked();
         },
         async _shareLink() {
+            if (this._shareBusy) return;            // 连点只走一条链，不然请求翻倍
+            this._shareBusy = true;
+            try {
             let ref = this._shareInfo();
             if (!ref.surl) { Swal.close(); return base.renderErrorPanel('读不到分享标识，请刷新页面后重试', this); }
             // 取链请求本身不带 bdstoken，判据只看页面登录态
@@ -2817,7 +2820,7 @@
             let picked = read || [];
             if (!picked.length && ref.list.length === 1) picked = ref.list;   // 单文件分享页没有勾选框
             // 页面自己就没有勾选控件（站点按「下载」也是整页下）；只在列表模块可用时认这种情况
-            let noPicker = !document.querySelector('dd.JS-list-view-item[data-file-key], .wp-checkbox, input[type=checkbox]');
+            let noPicker = !document.querySelector('.JS-list-view-item[data-file-key], .wp-checkbox, input[type=checkbox]');
             if (!picked.length && read && noPicker) picked = ref.list;
             if (!picked.length && read === null) {
                 Swal.close(); return base.renderErrorPanel('读不到页面的勾选状态，请刷新页面后重试', this);
@@ -2873,6 +2876,7 @@
                 if (i + 1 < files.length) await base.sleep(1000);
             }
             base.renderDownloadPanel(this.normalizeList(rows), this);
+            } finally { this._shareBusy = false; }
         },
         normalizeList(list) {
             return list.map(v => {
