@@ -4119,7 +4119,25 @@
             let m = /^\/(f|d)\/([^/?#]+)/.exec(location.pathname);
             let pass = '';
             try { pass = new URLSearchParams(location.search).get('p') || ''; } catch (e) { }
+            if (!pass && m) pass = this._localPass('passcode', m[2]);
             return { type: m ? m[1] : '', id: m ? m[2] : '', pass };
+        },
+        // 提取码与通行证都由页面写在本地，按 :<分享 id> 后缀找
+        _localPass(prefix, id) {
+            let tail = ':' + id;
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = '';
+                try { key = localStorage.key(i) || ''; } catch (e) { }
+                if (key.indexOf(prefix) !== 0 || key.slice(-tail.length) !== tail) continue;
+                let raw = '';
+                try { raw = localStorage.getItem(key) || ''; } catch (e) { }
+                try {
+                    let o = JSON.parse(raw);
+                    let v = (o && (o.pass || o.value)) || '';
+                    if (v) return v;
+                } catch (e) { }
+            }
+            return '';
         },
         async getPCSLink() {
             let ref = this._shareRef();
@@ -4418,14 +4436,25 @@
             let unit = { B: 1, KB: 1024, MB: 1048576, GB: 1073741824, TB: 1099511627776 };
             return Math.round((parseFloat(m[1]) || 0) * (unit[(m[2] || 'B').toUpperCase()] || 1));
         },
+        // 文件信息与通行证一次取回
+        async _resource(ref, ap) {
+            let url = 'https://urlapi2.ctfile.com/api/v2/resource?kind=file&id=' + encodeURIComponent(ref.id)
+                + '&folder_id=0&fk=&passcode=' + encodeURIComponent(ref.pass) + '&type_id=0'
+                + (ap ? '&access_pass=' + encodeURIComponent(ap) : '');
+            let res = await base.get(url);
+            let d = (res && res.data) || {};
+            return { code: (res && res.code) || 0, msg: (res && (res.msg || res.message)) || '', file: d.file || null, pass: d.access_pass || ap || '' };
+        },
         async _fileLink(ref) {
-            let meta = await base.get('https://webapi.ctfile.com/getfile.php?path=f&f=' + encodeURIComponent(ref.id) + '&passcode=' + encodeURIComponent(ref.pass) + '&token=false&r=' + Math.random());
-            let info = meta && meta.file;
-            if (!info || !info.file_chk) return base.renderErrorPanel('读取文件信息失败：' + ((info && info.message) || (meta && meta.msg) || '请确认提取码后重试'), this);
-            let link = await this._linkOf({ kind: 'file', id: ref.id, folder_id: '0', fk: '', passcode: ref.pass, type_id: '0' }, info.verifycode, {
+            let ap = this._localPass('access-pass', ref.id);
+            if (!ap) return base.renderErrorPanel('读不到页面凭证，刷新页面后重试', this);
+            let r = await this._resource(ref, ap);
+            let info = r.file;
+            if (!info || !info.file_chk) return base.renderErrorPanel('读取文件信息失败：' + (r.msg || ('城通返回 ' + r.code)), this);
+            let link = await this._linkOf({ kind: 'file', id: ref.id, folder_id: '0', fk: '', passcode: ref.pass, type_id: '0', access_pass: r.pass }, info.verifycode, {
                 file_id: info.file_id, userid: info.userid, file_chk: info.file_chk, start_time: info.start_time, wait_seconds: info.wait_seconds
             });
-            if (!link) return base.renderErrorPanel('取不到下载地址：提取码可能不对，或需要验证码', this);
+            if (!link) return base.renderErrorPanel('取不到下载地址，请重试', this);
             base.renderDownloadPanel([this._fileRow(info, link)], this);
         },
         async _dirLink(ref) {
@@ -4448,8 +4477,9 @@
         },
         async _listing(ref) {
             let rows = [];
+            let ap = this._localPass('access-pass', ref.id);
             for (let page = 0; page < 5; page++) {
-                let res = await base.get('https://urlapi.ctfile.com/api/v2/listing?kind=dir&id=' + encodeURIComponent(ref.id) + '&folder_id=0&fk=&passcode=' + encodeURIComponent(ref.pass) + '&type_id=0&start=' + rows.length + '&length=200');
+                let res = await base.get('https://urlapi.ctfile.com/api/v2/listing?kind=dir&id=' + encodeURIComponent(ref.id) + '&folder_id=0&fk=&passcode=' + encodeURIComponent(ref.pass) + '&type_id=0&start=' + rows.length + '&length=200' + (ap ? '&access_pass=' + encodeURIComponent(ap) : ''));
                 if (res && res.code && res.code !== 200) throw new Error(res.msg || ('城通返回 ' + res.code));
                 let d = res && res.data;
                 let batch = (d && d.rows) || [];
@@ -4458,12 +4488,21 @@
             }
             return rows;
         },
-        // 临时 id 在 href 上，凭据只能用列表返回的那份
+        // 后台直发缺 Origin 会被拒，改在页面内发
         async _linkOf(context, verifycode, original) {
-            let res = await base.post('https://urlapi.ctfile.com/api/v2/download', {
-                context: context, mb: 0, app: 0, verifycode: String(verifycode || ''), original_file: original
-            }, { 'content-type': 'application/json' });
-            let d = (res && res.data) || res || {};
+            let body = { context: context, mb: 0, app: 0, verifycode: String(verifycode || ''), original_file: original };
+            let pw = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+            if (!pw || typeof pw.fetch !== 'function') throw new Error('读不到页面环境，刷新页面后重试');
+            let r = await pw.fetch('https://urlapi.ctfile.com/api/v2/download', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(body),
+            });
+            let res = null;
+            try { res = await r.json(); } catch (e) { }
+            if (!res) throw new Error('HTTP ' + r.status);
+            let d = res.data || res;
             return d.downurl || d.url || d.download_url || '';
         },
         _fileRow(info, link, raw) {
