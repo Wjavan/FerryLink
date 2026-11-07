@@ -2760,7 +2760,7 @@
         },
         // 这条链路要带页面来源，用页面的 fetch 发
         _shareRequest(url, method, body) {
-            // 拿不到 unsafeWindow 就用沙箱的 window，指向同一个页面
+            // 拿不到 unsafeWindow 就用沙箱的 window
             let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
             // 两条通道一种给对象一种给文本，都得吃
             let toJson = (t) => {
@@ -2782,7 +2782,7 @@
                 ? Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson)
                 : Promise.resolve(base.post(url, body, { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': location.origin }, 'text')).then(toJson);
         },
-        // 分享页有三种前端，按钮区位置不一样，取第一个真实存在的
+        // 各版本按钮区不同，取第一个存在的
         _shareMountSel() {
             let cands = ['.module-share-bottom-bar .x-button-box', '.module-share-top-bar .x-button-box', '.module-share-top-bar .bar', '.module-share-top-bar', '.share-header-bar', '.module-share-header'];
             for (let i = 0; i < cands.length; i++) {
@@ -2790,7 +2790,7 @@
             }
             return panInfo.btn.share;
         },
-        // 列表视图的勾选挂在行上，行带的 data-file-key 就是 fs_id
+        // 勾选挂在行上，data-file-key 就是 fs_id
         _shareChecked() {
             let rows = document.querySelectorAll('.JS-list-view-item[data-file-key]');
             if (!rows.length) return null;
@@ -2813,47 +2813,40 @@
             return pageNum === 'share' ? this._shareChecked() : null;
         },
         async _shareLink() {
-            // 连点复用同一条链，避免请求翻倍、也不要把 loading 关掉
+            // 连点复用同一条链，请求别翻倍
             if (this._shareChain) return this._shareChain;
             this._shareChain = this._shareFetch();
             try { return await this._shareChain; } finally { this._shareChain = null; }
         },
         async _shareFetch() {
             let ref = this._shareInfo();
-            if (!ref.surl) { Swal.close(); return base.renderErrorPanel('读不到分享标识，请刷新页面后重试', this); }
-            if (!ref.hasDump) {
-                Swal.close(); return base.renderErrorPanel('读不到页面信息（locals 未就绪），请刷新页面后重试', this);
-            }
-            // 只有明确未登录才拦；字段缺失交给接口报错，别误报成「没登录」
-            if (ref.pick('loginstate') === '0') {
-                Swal.close(); return base.renderErrorPanel('分享页下载需要登录百度网盘，请登录后重试', this);
-            }
-            if (!ref.pick('shareid') || !ref.pick('share_uk')) {
-                Swal.close(); return base.renderErrorPanel('页面里的分享标识不完整，请刷新页面后重试', this);
-            }
+            const fail = (msg) => { Swal.close(); return base.renderErrorPanel(msg, this); };
+            if (!ref.surl) return fail('读不到分享标识，请刷新页面后重试');
+            if (!ref.hasDump) return fail('读不到页面信息（locals 未就绪），请刷新页面后重试');
+            // 只有明确未登录才拦，字段缺失交给接口报错
+            if (ref.pick('loginstate') === '0') return fail('分享页下载需要登录百度网盘，请登录后重试');
+            if (!ref.pick('shareid') || !ref.pick('share_uk')) return fail('页面里的分享标识不完整，请刷新页面后重试');
             let read = this._shareSelected();     // 数组=读到了，null=页面上拿不到
-            // 行上只有 fs_id：名字/大小/是否文件夹按 fs_id 从页面清单补齐
+            // 行上只有 fs_id，名字和大小从页面清单补
             let meta = {};
             ref.list.forEach(v => { if (v && v.fs_id !== undefined && v.fs_id !== null) meta[String(v.fs_id)] = v; });
             let picked = (read || []).map(v => Object.assign({}, v, meta[String(v.fs_id)] || {}));
             if (!picked.length && ref.list.length === 1) picked = ref.list;   // 单文件分享页没有勾选框
-            // 站点自己整页下载的旧布局：既没有底栏也没有带 key 的行
+            // 旧布局没有底栏，也没有带 key 的行
             let tableUi = !!(document.querySelector('.module-share-bottom-bar') || document.querySelector('.JS-list-view-item[data-file-key]'));
             if (!picked.length && read && !tableUi) picked = ref.list;
-            if (!picked.length && read === null) {
-                Swal.close(); return base.renderErrorPanel('读不到页面的勾选状态，请刷新页面后重试', this);
-            }
+            if (!picked.length && read === null) return fail('读不到页面的勾选状态，请刷新页面后重试');
             if (!picked.length) { Swal.close(); return base.renderDownloadPanel([], this); }
             let files = picked.filter(v => v && +v.isdir !== 1);
             if (!files.length) { Swal.close(); return message.error('提示：分享页只支持文件，请勾选文件后再试！'); }
-            if (files.length > 20) { Swal.close(); return base.renderErrorPanel('一次最多取 20 个文件（当前 ' + files.length + ' 个），请勾选后再试', this); }
+            if (files.length > 20) return fail('一次最多取 20 个文件（当前 ' + files.length + ' 个），请勾选后再试');
             let bdstoken = ref.pick('bdstoken');
             let tplUrl = panInfo.pcs[2] + '&surl=' + encodeURIComponent(ref.surl) + (bdstoken ? '&bdstoken=' + encodeURIComponent(bdstoken) : '');
             let tpl = await this._shareRequest(tplUrl, 'GET');
             let sign = (tpl && tpl.data) || {};
             if (!sign.sign || !sign.timestamp) {
                 let why = tpl && tpl.errno ? '（errno ' + tpl.errno + (tpl.errmsg ? '：' + tpl.errmsg : '') + '）' : '';
-                Swal.close(); return base.renderErrorPanel('取不到分享签名' + why + '，请刷新页面后重试', this);
+                return fail('取不到分享签名' + why + '，请刷新页面后重试');
             }
             let dlUrl = panInfo.pcs[1] + '&sign=' + encodeURIComponent(sign.sign) + '&timestamp=' + encodeURIComponent(sign.timestamp);
             let uk = encodeURIComponent(ref.pick('share_uk'));
@@ -2896,7 +2889,7 @@
             base.renderDownloadPanel(this.normalizeList(rows, true), this);
         },
         normalizeList(list, noAuth) {
-            // 分享页直链不需要授权，别把个人令牌贴上去（会进剪贴板/下载器命令行）
+            // 分享直链不需要授权，别贴个人令牌
             let token = noAuth ? '' : base.getValue('baidu_access_token');
             return list.map(v => {
                 let dlink = '';
