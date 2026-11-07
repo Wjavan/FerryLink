@@ -2771,13 +2771,26 @@
                 ? Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson)
                 : Promise.resolve(base.post(url, body, { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': location.origin }, 'text')).then(toJson);
         },
-        // 列表模块读得到返回勾选项，读不到返回 null，跟「确实没勾」区分开
+        // 列表视图的勾选挂在行上，行带的 data-file-key 就是 fs_id
+        _shareChecked() {
+            let rows = document.querySelectorAll('dd.JS-list-view-item[data-file-key]');
+            if (!rows.length) return null;
+            let picked = [];
+            rows.forEach(r => {
+                if (!/JS-item-active/.test(r.className) && !r.querySelector('.wp-checkbox--checked')) return;
+                let id = String(r.getAttribute('data-file-key') || '');
+                if (id) picked.push({ fs_id: id, isdir: 0 });
+            });
+            return picked;
+        },
+        // 读得到返回勾选项，读不到返回 null，跟「确实没勾」区分开
         _shareSelected() {
             let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
             let ctx = null;
             try { ctx = require('system-core:context/context.js'); } catch (e) { }
             if (!ctx) { try { ctx = scope.require('system-core:context/context.js'); } catch (e) { } }
-            try { return ctx ? (ctx.instanceForSystem.list.getSelected() || []) : null; } catch (e) { return null; }
+            try { if (ctx) return ctx.instanceForSystem.list.getSelected() || []; } catch (e) { }
+            return this._shareChecked();
         },
         async _shareLink() {
             let ref = this._shareInfo();
@@ -2786,9 +2799,12 @@
             if (ref.pick('loginstate') !== '1') {
                 Swal.close(); return base.renderErrorPanel('分享页下载需要登录百度网盘，请登录后重试', this);
             }
-            let picked = this._shareSelected();
-            if (picked === null) picked = ref.list;                              // 沙箱里读不到列表模块
-            else if (!picked.length && ref.list.length === 1) picked = ref.list;  // 单文件分享页没有勾选框
+            let read = this._shareSelected();     // 数组=读到了，null=页面上拿不到
+            let picked = read || [];
+            if (!picked.length && ref.list.length === 1) picked = ref.list;   // 单文件分享页没有勾选框
+            if (!picked.length && read === null) {
+                Swal.close(); return base.renderErrorPanel('读不到页面的勾选状态，请刷新页面后重试', this);
+            }
             if (!picked.length) { Swal.close(); return base.renderDownloadPanel([], this); }
             let files = picked.filter(v => v && +v.isdir !== 1);
             if (!files.length) { Swal.close(); return message.error('提示：分享页只支持文件，请勾选文件后再试！'); }
