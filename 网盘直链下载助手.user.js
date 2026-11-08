@@ -2507,6 +2507,7 @@
             if (color) $shareButton.css({ color: color, borderColor: color, background: color + '1f' });
             base.mountWithRetry(() => {
                 pageNum = this.detectPage();
+                if (pageNum === 'share' && this._shareIsMine()) return true;
                 let sel = pageNum === 'share' ? this._shareMountSel() : (panInfo.btn[pageNum] || panInfo.btn.main);
                 let $toolWrap = $(sel);
                 if (!$toolWrap.length) return false;
@@ -2783,6 +2784,11 @@
                 if (document.querySelector(cands[i])) return cands[i];
             }
             return panInfo.btn.share;
+        },
+        // 自己的分享页会给「取消分享」，这种不用挂按钮
+        _shareIsMine() {
+            let bar = document.querySelector('.share-header-bar, .module-share-top-bar, .module-share-bottom-bar');
+            return !!(bar && /取消分享/.test(bar.textContent || ''));
         },
         // 勾选挂在行上，data-file-key 就是 fs_id
         _shareChecked() {
