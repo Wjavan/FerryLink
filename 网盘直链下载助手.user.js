@@ -2874,6 +2874,8 @@
                         row.dlink = '该文件超过百度可获取限制，需保存到网盘后下载';
                     } else if (res && (res.errno === 9019 || /needverify/.test(String(res.errmsg)))) {
                         row.dlink = '百度要求身份验证，请刷新页面后重试';
+                    } else if (res && res.errno === -20) {
+                        row.dlink = '请求过于频繁，请稍后再试（-20）';
                     } else {
                         row.dlink = '获取下载地址失败：' + String((res && (res.errmsg || res.errno)) || '').slice(0, 60);
                     }
