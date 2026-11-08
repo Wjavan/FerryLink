@@ -2824,9 +2824,10 @@
             let meta = {};
             ref.list.forEach(v => { if (v && v.fs_id !== undefined && v.fs_id !== null) meta[String(v.fs_id)] = v; });
             let picked = (read || []).map(v => Object.assign({}, v, meta[String(v.fs_id)] || {}));
-            if (!picked.length && ref.list.length === 1) picked = ref.list;   // 单文件分享页没有勾选框
             // 旧布局没有底栏，也没有带 key 的行
             let tableUi = !!(document.querySelector('.module-share-bottom-bar') || document.querySelector('.JS-list-view-item[data-file-key]'));
+            // 只有页面上根本没有勾选控件时，才用清单兜底（单文件详情页就是这种）
+            if (!picked.length && ref.list.length === 1 && !tableUi) picked = ref.list;
             if (!picked.length && read && !tableUi) picked = ref.list;
             if (!picked.length && read === null) return fail('读不到页面的勾选状态，请刷新页面后重试');
             if (!picked.length) { Swal.close(); return base.renderDownloadPanel([], this); }
