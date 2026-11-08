@@ -2826,9 +2826,10 @@
             let picked = (read || []).map(v => Object.assign({}, v, meta[String(v.fs_id)] || {}));
             // 旧布局没有底栏，也没有带 key 的行
             let tableUi = !!(document.querySelector('.module-share-bottom-bar') || document.querySelector('.JS-list-view-item[data-file-key]'));
-            // 只有页面上根本没有勾选控件时，才用清单兜底（单文件详情页就是这种）
+            // 单文件详情页没有勾选框，清单里就那一个，直接用
             if (!picked.length && ref.list.length === 1 && !tableUi) picked = ref.list;
-            if (!picked.length && read && !tableUi) picked = ref.list;
+            // 多文件又没有勾选框：不猜要下哪些，明说
+            if (!picked.length && !tableUi && ref.list.length > 1) return fail('页面上没有勾选框，请勾选文件后再试');
             if (!picked.length && read === null) return fail('读不到页面的勾选状态，请刷新页面后重试');
             if (!picked.length) { Swal.close(); return base.renderDownloadPanel([], this); }
             let files = picked.filter(v => v && +v.isdir !== 1);
