@@ -2512,7 +2512,6 @@
                 let $toolWrap = $(sel);
                 if (!$toolWrap.length) return false;
                 let $btn = pageNum === 'main' ? $mainButton : (pageNum === 'share' ? $shareButton : $button);
-                // 单文件页是页主视角，整页没有按钮组，只能挂在顶栏右侧
                 if (pageNum === 'share' && !/x-button-box/.test(sel)) $toolWrap.append($btn);
                 else $toolWrap.prepend($btn);
                 return true;
@@ -2756,7 +2755,7 @@
             let m = /^\/s\/([^/?#]+)/.exec(location.pathname);
             return { pick: pick, list: list, sekey: sekey, surl: m ? m[1] : '', hasDump: !!has };
         },
-        // 这条链路要带页面来源，用页面的 fetch 发
+        // 要带页面来源，用页面 fetch 发
         _shareRequest(url, method, body) {
             let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
             let toJson = (t) => {
@@ -2772,7 +2771,7 @@
                     opt.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
                     opt.body = body;
                 }
-                // 卡住的请求会一直占着单飞位，面板关不掉只能刷新；到点自己断
+                // 卡住会占死单飞位，到点自己断
                 let AC = (scope && scope.AbortController) || (typeof AbortController === 'function' ? AbortController : null);
                 let ctrl = AC ? new AC() : null;
                 if (ctrl) opt.signal = ctrl.signal;
@@ -2780,7 +2779,7 @@
                 let done = (fn) => (v) => { clearTimeout(timer); return fn(v); };
                 return scope.fetch(url, opt).then(done(r => r.text())).then(toJson, (e) => {
                     clearTimeout(timer);
-                    // 拿直链是 POST，百度可能已经收下，重发等于同一文件提交两次
+                    // POST 可能已被收下，重发等于提交两次
                     if (method !== 'GET') throw new Error('请求超时或失败，请稍后重试');
                     return Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson);
                 });
@@ -2796,12 +2795,12 @@
             }
             return panInfo.btn.share;
         },
-        // 自己的分享页会给「取消分享」，这种不用挂按钮
+        // 自己的分享有「取消分享」，不挂按钮
         _shareIsMine() {
             let bar = document.querySelector('.share-header-bar, .module-share-top-bar, .module-share-bottom-bar');
             return !!(bar && /取消分享/.test(bar.textContent || ''));
         },
-        // 勾选挂在行上，data-file-key 就是 fs_id
+        // data-file-key 就是 fs_id
         _shareChecked() {
             let rows = document.querySelectorAll('.JS-list-view-item[data-file-key]');
             if (!rows.length) return null;
@@ -2813,14 +2812,14 @@
             });
             return picked;
         },
-        // 读得到返回勾选项，读不到返回 null，跟「确实没勾」区分开
+        // 读不到返回 null，跟「确实没勾」区分开
         _shareSelected() {
             let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
             let ctx = null;
             try { ctx = require('system-core:context/context.js'); } catch (e) { }
             if (!ctx) { try { ctx = scope.require('system-core:context/context.js'); } catch (e) { } }
             try { if (ctx) return ctx.instanceForSystem.list.getSelected() || []; } catch (e) { }
-            // 行上的勾选是分享页的约定，别带进个人网盘的取选逻辑
+            // 行勾选是分享页的，别带进个人网盘
             return pageNum === 'share' ? this._shareChecked() : null;
         },
         async _shareLink() {
@@ -2836,16 +2835,16 @@
             // 只有明确未登录才拦，字段缺失交给接口报错
             if (ref.pick('loginstate') === '0') return fail('分享页下载需要登录百度网盘，请登录后重试');
             if (!ref.pick('shareid') || !ref.pick('share_uk')) return fail('页面里的分享标识不完整，请刷新页面后重试');
-            let read = this._shareSelected();     // 数组=读到了，null=页面上拿不到
-            // 行上只有 fs_id，名字和大小从页面清单补
+            let read = this._shareSelected();
+            // 名字和大小从页面清单补
             let meta = {};
             ref.list.forEach(v => { if (v && v.fs_id !== undefined && v.fs_id !== null) meta[String(v.fs_id)] = v; });
             let picked = (read || []).map(v => Object.assign({}, v, meta[String(v.fs_id)] || {}));
-            // 认勾选框本身；认错了只会多提示一句，不会多下文件
+            // 认错了只会多提示，不会多下文件
             let hasPicker = !!(document.querySelector('dd .wp-checkbox, dd input[type=checkbox], .JS-list-view-item .wp-checkbox, .JS-list-view-item input[type=checkbox], .module-share-file-main .wp-checkbox, .module-share-file-main input[type=checkbox], .share-list-header .wp-checkbox'));
-            // 单文件详情页没有勾选框，清单里就那一个，直接用
+            // 单文件页没勾选框，直接用清单里那一个
             if (!picked.length && ref.list.length === 1 && !hasPicker) picked = ref.list;
-            // 多文件又没有勾选框：不猜要下哪些，明说
+            // 多文件又没勾选框：不猜，明说
             if (!picked.length && !hasPicker && ref.list.length > 1) return fail('页面上没有勾选框，请勾选文件后再试');
             if (!picked.length && read === null) return fail('读不到页面的勾选状态，请刷新页面后重试');
             if (!picked.length) { Swal.close(); return base.renderDownloadPanel([], this); }
@@ -2853,7 +2852,7 @@
             if (!files.length) { Swal.close(); return message.error('提示：分享页只支持文件，请勾选文件后再试！'); }
             if (files.length > 20) return fail('一次最多取 20 个文件（当前 ' + files.length + ' 个），请勾选后再试');
             let bdstoken = ref.pick('bdstoken');
-            // yun 域下同源取链，跨到 pan 会被 CORS 拦
+            // yun 域要同源，跨到 pan 会被 CORS 拦
             let api = (u) => u.replace('https://pan.baidu.com', location.origin);
             let tplUrl = api(panInfo.pcs[2]) + '&surl=' + encodeURIComponent(ref.surl) + (bdstoken ? '&bdstoken=' + encodeURIComponent(bdstoken) : '');
             let tpl = await this._shareRequest(tplUrl, 'GET');
@@ -2952,7 +2951,7 @@
         },
         getSelectedList() {
             let got = this._shareSelected();
-            if (Array.isArray(got)) return got;   // 读不到（null）才退回到页面里那个 Vue 列表
+            if (Array.isArray(got)) return got;   // 读不到才退回 Vue 列表
             let panInfo = document.querySelector('.wp-s-core-pan');
             return panInfo && panInfo.__vue__ ? panInfo.__vue__.selectedList : [];
         },
