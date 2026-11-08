@@ -2881,9 +2881,9 @@
                     } else if (res && (res.errno === 9019 || /needverify/.test(String(res.errmsg)))) {
                         row.dlink = '百度要求身份验证，请刷新页面后重试';
                     } else if (res && res.errno === -20) {
-                        row.dlink = '请求过于频繁，请稍后再试（-20）';
+                        row.dlink = '百度要求人机验证，请先在该页面点一次「下载」输完验证码，再回来重试';
                     } else {
-                        row.dlink = '获取下载地址失败：' + String((res && (res.errmsg || res.errno)) || '').slice(0, 60);
+                        row.dlink = '获取下载地址失败：' + String((res && (res.errmsg || res.show_msg || res.errno)) || '').slice(0, 60);
                     }
                 } catch (e) {
                     row.dlink = '获取下载地址失败：' + ((e && e.message) || '未知错误');
