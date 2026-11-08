@@ -2619,8 +2619,8 @@
                 }
         },
         async getPCSLink(maxRequestTime = 1) {
-            selectedFiles = this.getSelectedList();
             if (pageNum === 'share') return this._shareLink();
+            selectedFiles = this.getSelectedList();
             let fidArray = this._getFidArray(), res;
             const authFail = () => { Swal.close(); return base.renderErrorPanel('百度授权未完成：请刷新重试，仍失败请确认已登录百度', this); };
             if (pageNum === 'home' || pageNum === 'main') {
@@ -2824,26 +2824,28 @@
             let meta = {};
             ref.list.forEach(v => { if (v && v.fs_id !== undefined && v.fs_id !== null) meta[String(v.fs_id)] = v; });
             let picked = (read || []).map(v => Object.assign({}, v, meta[String(v.fs_id)] || {}));
-            // 旧布局没有底栏，也没有带 key 的行
-            let tableUi = !!(document.querySelector('.module-share-bottom-bar') || document.querySelector('.JS-list-view-item[data-file-key]'));
+            // 认勾选框本身；认错了只会多提示一句，不会多下文件
+            let hasPicker = !!(document.querySelector('dd .wp-checkbox, dd input[type=checkbox], .JS-list-view-item .wp-checkbox, .JS-list-view-item input[type=checkbox], .module-share-file-main .wp-checkbox, .module-share-file-main input[type=checkbox], .share-list-header .wp-checkbox'));
             // 单文件详情页没有勾选框，清单里就那一个，直接用
-            if (!picked.length && ref.list.length === 1 && !tableUi) picked = ref.list;
+            if (!picked.length && ref.list.length === 1 && !hasPicker) picked = ref.list;
             // 多文件又没有勾选框：不猜要下哪些，明说
-            if (!picked.length && !tableUi && ref.list.length > 1) return fail('页面上没有勾选框，请勾选文件后再试');
+            if (!picked.length && !hasPicker && ref.list.length > 1) return fail('页面上没有勾选框，请勾选文件后再试');
             if (!picked.length && read === null) return fail('读不到页面的勾选状态，请刷新页面后重试');
             if (!picked.length) { Swal.close(); return base.renderDownloadPanel([], this); }
             let files = picked.filter(v => v && +v.isdir !== 1);
             if (!files.length) { Swal.close(); return message.error('提示：分享页只支持文件，请勾选文件后再试！'); }
             if (files.length > 20) return fail('一次最多取 20 个文件（当前 ' + files.length + ' 个），请勾选后再试');
             let bdstoken = ref.pick('bdstoken');
-            let tplUrl = panInfo.pcs[2] + '&surl=' + encodeURIComponent(ref.surl) + (bdstoken ? '&bdstoken=' + encodeURIComponent(bdstoken) : '');
+            // yun 域下同源取链，跨到 pan 会被 CORS 拦
+            let api = (u) => u.replace('https://pan.baidu.com', location.origin);
+            let tplUrl = api(panInfo.pcs[2]) + '&surl=' + encodeURIComponent(ref.surl) + (bdstoken ? '&bdstoken=' + encodeURIComponent(bdstoken) : '');
             let tpl = await this._shareRequest(tplUrl, 'GET');
             let sign = (tpl && tpl.data) || {};
             if (!sign.sign || !sign.timestamp) {
                 let why = tpl && tpl.errno ? '（errno ' + tpl.errno + (tpl.errmsg ? '：' + tpl.errmsg : '') + '）' : '';
                 return fail('取不到分享签名' + why + '，请刷新页面后重试');
             }
-            let dlUrl = panInfo.pcs[1] + '&sign=' + encodeURIComponent(sign.sign) + '&timestamp=' + encodeURIComponent(sign.timestamp);
+            let dlUrl = api(panInfo.pcs[1]) + '&sign=' + encodeURIComponent(sign.sign) + '&timestamp=' + encodeURIComponent(sign.timestamp);
             let uk = encodeURIComponent(ref.pick('share_uk'));
             let primaryid = encodeURIComponent(ref.pick('shareid'));
             let rows = [];
