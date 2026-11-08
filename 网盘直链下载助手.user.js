@@ -2772,7 +2772,18 @@
                     opt.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
                     opt.body = body;
                 }
-                return scope.fetch(url, opt).then(r => r.text()).then(toJson);
+                // 卡住的请求会一直占着单飞位，面板关不掉只能刷新；到点自己断
+                let AC = (scope && scope.AbortController) || (typeof AbortController === 'function' ? AbortController : null);
+                let ctrl = AC ? new AC() : null;
+                if (ctrl) opt.signal = ctrl.signal;
+                let timer = setTimeout(() => { if (ctrl) ctrl.abort(); }, 20000);
+                let done = (fn) => (v) => { clearTimeout(timer); return fn(v); };
+                return scope.fetch(url, opt).then(done(r => r.text())).then(toJson, (e) => {
+                    clearTimeout(timer);
+                    // 拿直链是 POST，百度可能已经收下，重发等于同一文件提交两次
+                    if (method !== 'GET') throw new Error('请求超时或失败，请稍后重试');
+                    return Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson);
+                });
             }
             return method === 'GET'
                 ? Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson)
