@@ -2376,7 +2376,7 @@
     const LOCAL_CONFIG = {
         baidu: {
             pcs: {"0": "https://pan.baidu.com/rest/2.0/xpan/multimedia?method=filemetas&dlink=1", "1": "https://pan.baidu.com/api/sharedownload?channel=chunlei&web=1&app_id=250528", "2": "https://pan.baidu.com/share/tplconfig?fields=sign,timestamp&channel=chunlei&web=1&app_id=250528&clienttype=0", "3": "https://openapi.baidu.com/oauth/2.0/authorize?client_id=IlLqBbU3GjQ0t46TRwFateTprHWl39zF&response_type=token&redirect_uri=oob&confirm_login=0&scope=basic,netdisk", "4": "https://openapi.baidu.com/oauth/2.0/login_success"},
-            btn: {"home": ".tcuLAu", "main": ".wp-s-agile-tool-bar__header", "share": ".module-share-bottom-bar .x-button-box"},
+            btn: {"home": ".tcuLAu", "main": ".wp-s-agile-tool-bar__header"},
             ua: "pan.baidu.com",
             api: {0: "API 下载", 1: ''},
             aria: {0: "Aria 下载", 1: ''},
@@ -2776,8 +2776,7 @@
                 let ctrl = AC ? new AC() : null;
                 if (ctrl) opt.signal = ctrl.signal;
                 let timer = setTimeout(() => { if (ctrl) ctrl.abort(); }, 20000);
-                let done = (fn) => (v) => { clearTimeout(timer); return fn(v); };
-                return scope.fetch(url, opt).then(done(r => r.text())).then(toJson, (e) => {
+                return scope.fetch(url, opt).then(r => r.text()).then(t => { clearTimeout(timer); return toJson(t); }).catch((e) => {
                     clearTimeout(timer);
                     // POST 可能已被收下，重发等于提交两次
                     if (method !== 'GET') throw new Error('请求超时或失败，请稍后重试');
@@ -2793,7 +2792,7 @@
             for (let i = 0; i < cands.length; i++) {
                 if (document.querySelector(cands[i])) return cands[i];
             }
-            return panInfo.btn.share;
+            return '';
         },
         // 自己的分享有「取消分享」，不挂按钮
         _shareIsMine() {
@@ -2974,7 +2973,7 @@
             this.addButton();
             base.createTip();
             base.registerMenuCommand();
-            this.preflightAccount();
+            if (pageNum !== 'share') this.preflightAccount();
         },
         async initAuthorize() {
             let authPollTimer = setInterval(() => {
