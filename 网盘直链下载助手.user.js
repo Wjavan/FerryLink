@@ -2773,7 +2773,7 @@
                 return scope.fetch(url, opt).then(r => r.text()).then(t => { clearTimeout(timer); return toJson(t); }).catch((e) => {
                     clearTimeout(timer);
                     // POST 可能已被收下，重发等于提交两次
-                    if (method !== 'GET') throw new Error((e && e.message) || '请求超时或失败，请稍后重试');
+                    if (method !== 'GET') throw new Error(e && e.name === 'AbortError' ? '请求超时，请稍后重试' : ((e && e.message) || '请求超时或失败，请稍后重试'));
                     return Promise.resolve(base.get(url)).then(toJson);
                 });
             }
@@ -2782,7 +2782,7 @@
                 : Promise.resolve(base.post(url, body, { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': location.origin }, 'text')).then(toJson);
         },
         _shareMountSel() {
-            let cands = ['.module-share-bottom-bar .x-button-box', '.module-share-top-bar .x-button-box', '.module-share-top-bar .bar', '.module-share-top-bar', '.share-header-bar', '.module-share-header'];
+            let cands = ['.module-share-bottom-bar .x-button-box', '.module-share-top-bar .x-button-box', '.share-header-bar'];
             for (let i = 0; i < cands.length; i++) {
                 if (document.querySelector(cands[i])) return cands[i];
             }
