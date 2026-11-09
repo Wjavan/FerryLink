@@ -2756,11 +2756,10 @@
             let toJson = (t) => {
                 if (t && typeof t === 'object') return t;
                 try { return JSON.parse(t); } catch (e) {
-                    console.warn('[FerryLink] 接口返回的不是 JSON：', String(t).slice(0, 200));
                     throw new Error('接口返回的不是数据（可能未登录或页面已改版）');
                 }
             };
-            if (scope && typeof scope.fetch === 'function') {
+            if (typeof scope.fetch === 'function') {
                 let opt = { method: method, credentials: 'include' };
                 if (method !== 'GET') {
                     opt.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
@@ -2800,7 +2799,7 @@
             let picked = [];
             rows.forEach(r => {
                 if (!r.classList.contains('JS-item-active') && !r.querySelector('.wp-checkbox--checked')) return;
-                let id = String(r.getAttribute('data-file-key') || '');
+                let id = r.getAttribute('data-file-key') || '';
                 if (id) picked.push({ fs_id: id });
             });
             return picked;
@@ -2861,10 +2860,9 @@
             for (let i = 0; i < files.length; i++) {
                 let it = files[i];
                 if (files.length > 1) base.tipLoading('正在获取下载链接 ' + (i + 1) + '/' + files.length + '…');
-                let fid = it.fs_id !== undefined && it.fs_id !== null ? it.fs_id
-                    : (it.file_id !== undefined && it.file_id !== null ? it.file_id : it.id);
+                let fid = it.fs_id || it.file_id || it.id || '';
                 let row = { server_filename: it.server_filename || it.filename || '', size: it.size, isdir: it.isdir };
-                if (fid === undefined || fid === null || fid === '') {
+                if (!fid) {
                     row.dlink = '读不到文件标识，请刷新页面后重试';
                     rows.push(row);
                     continue;
