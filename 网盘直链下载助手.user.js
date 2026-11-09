@@ -2773,11 +2773,11 @@
                     clearTimeout(timer);
                     // POST 可能已被收下，重发等于提交两次
                     if (method !== 'GET') throw new Error('请求超时或失败，请稍后重试');
-                    return Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson);
+                    return Promise.resolve(base.get(url)).then(toJson);
                 });
             }
             return method === 'GET'
-                ? Promise.resolve(base.get(url, { 'Referer': location.origin })).then(toJson)
+                ? Promise.resolve(base.get(url)).then(toJson)
                 : Promise.resolve(base.post(url, body, { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': location.origin }, 'text')).then(toJson);
         },
         _shareMountSel() {
@@ -2789,7 +2789,7 @@
         },
         // 自己的分享有「取消分享」，不挂按钮
         _shareIsMine() {
-            let bars = document.querySelectorAll('.share-header-bar, .module-share-header, .module-share-top-bar, .module-share-bottom-bar');
+            let bars = document.querySelectorAll('.share-header-bar, .module-share-top-bar, .module-share-bottom-bar');
             return Array.from(bars).some(b => /取消分享/.test(b.textContent || ''));
         },
         // data-file-key 就是 fs_id
@@ -2810,7 +2810,7 @@
             let ctx = null;
             try { ctx = require('system-core:context/context.js'); } catch (e) { }
             if (!ctx) { try { ctx = scope.require('system-core:context/context.js'); } catch (e) { } }
-            try { if (ctx) return ctx.instanceForSystem.list.getSelected() || []; } catch (e) { }
+            try { let got = ctx && ctx.instanceForSystem.list.getSelected(); if (Array.isArray(got)) return got; } catch (e) { }
             return this._shareChecked();
         },
         async _shareLink() {
@@ -2869,7 +2869,7 @@
                 }
                 try {
                     let form = 'encrypt=0&product=share'
-                        + '&extra=' + encodeURIComponent(JSON.stringify({ sekey: ref.sekey }))
+                        + (ref.sekey ? '&extra=' + encodeURIComponent(JSON.stringify({ sekey: ref.sekey })) : '')
                         + '&timestamp=' + encodeURIComponent(sign.timestamp)
                         + '&uk=' + uk
                         + '&primaryid=' + primaryid
