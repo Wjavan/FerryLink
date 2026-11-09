@@ -2790,8 +2790,8 @@
         },
         // 自己的分享有「取消分享」，不挂按钮
         _shareIsMine() {
-            let bar = document.querySelector('.share-header-bar, .module-share-top-bar, .module-share-bottom-bar');
-            return !!(bar && /取消分享/.test(bar.textContent || ''));
+            let bars = document.querySelectorAll('.share-header-bar, .module-share-top-bar, .module-share-bottom-bar');
+            return Array.from(bars).some(b => /取消分享/.test(b.textContent || ''));
         },
         // data-file-key 就是 fs_id
         _shareChecked() {
@@ -2799,7 +2799,7 @@
             if (!rows.length) return null;
             let picked = [];
             rows.forEach(r => {
-                if (!/JS-item-active/.test(r.className) && !r.querySelector('.wp-checkbox--checked')) return;
+                if (!r.classList.contains('JS-item-active') && !r.querySelector('.wp-checkbox--checked')) return;
                 let id = String(r.getAttribute('data-file-key') || '');
                 if (id) picked.push({ fs_id: id });
             });
@@ -2840,7 +2840,7 @@
             if (!picked.length && read === null) return fail('读不到页面的勾选状态，请刷新页面后重试');
             if (!picked.length) { Swal.close(); return base.renderDownloadPanel([], this); }
             // 类型只能来自页面清单，填不到就别猜
-            if (picked.some(v => v && v.isdir === undefined)) return fail('读不到文件类型，请刷新页面后重试');
+            if (picked.some(v => v && (v.isdir == null || v.isdir === ''))) return fail('读不到文件类型，请刷新页面后重试');
             let files = picked.filter(v => v && +v.isdir !== 1);
             if (!files.length) { Swal.close(); return message.error('提示：分享页只支持文件，请勾选文件后再试！'); }
             if (files.length > 20) return fail('一次最多取 20 个文件（当前 ' + files.length + ' 个），请勾选后再试');

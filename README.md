@@ -65,7 +65,7 @@
 
 | 网盘 | 访问地址 |
 |------|----------|
-| 百度网盘 | `pan.baidu.com` / `yun.baidu.com`，含分享页 `/s/*` |
+| 百度网盘 | `pan.baidu.com` / `yun.baidu.com`，含分享页 `/s/*`（yun 见注意事项） |
 | 阿里云盘 | `aliyundrive.com` / `alipan.com` |
 | 天翼云盘 | `cloud.189.cn` |
 | 迅雷云盘 | `pan.xunlei.com` |
