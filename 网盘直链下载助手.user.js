@@ -2789,7 +2789,7 @@
         },
         // 自己的分享有「取消分享」，不挂按钮
         _shareIsMine() {
-            let bars = document.querySelectorAll('.share-header-bar, .module-share-top-bar, .module-share-bottom-bar');
+            let bars = document.querySelectorAll('.share-header-bar, .module-share-header, .module-share-top-bar, .module-share-bottom-bar');
             return Array.from(bars).some(b => /取消分享/.test(b.textContent || ''));
         },
         // data-file-key 就是 fs_id
@@ -2820,7 +2820,7 @@
         },
         async _shareFetch() {
             let ref = this._shareInfo();
-            const fail = (msg) => { Swal.close(); return base.renderErrorPanel(msg, this); };
+            const fail = (msg) => { Swal.close(); base.renderErrorPanel(msg, this); };
             if (!ref.surl) return fail('读不到分享标识，请刷新页面后重试');
             if (!ref.hasDump) return fail('读不到页面信息（locals 未就绪），请刷新页面后重试');
             // 只有明确未登录才拦，字段缺失交给接口报错
@@ -2831,17 +2831,17 @@
             ref.list.forEach(v => { if (v && v.fs_id !== undefined && v.fs_id !== null) meta[String(v.fs_id)] = v; });
             let picked = (read || []).map(v => Object.assign({}, v, meta[String(v.fs_id)] || {}));
             // 认错了只会多提示，不会多下文件
-            let hasPicker = !!(document.querySelector('dd .wp-checkbox, dd input[type=checkbox], .JS-list-view-item .wp-checkbox, .JS-list-view-item input[type=checkbox], .module-share-file-main .wp-checkbox, .module-share-file-main input[type=checkbox], .share-list-header .wp-checkbox'));
+            let hasPicker = !!(document.querySelector('dd .wp-checkbox, dd input[type=checkbox], .JS-list-view-item .wp-checkbox, .JS-list-view-item input[type=checkbox], .module-share-file-main .wp-checkbox, .module-share-file-main input[type=checkbox]'));
             // 单文件页没勾选框，直接用清单里那一个
             if (!picked.length && ref.list.length === 1 && !hasPicker) picked = ref.list;
             // 多文件又没勾选框：不猜，明说
             if (!picked.length && !hasPicker && ref.list.length > 1) return fail('页面上没有勾选框，请勾选文件后再试');
             if (!picked.length && read === null) return fail('读不到页面的勾选状态，请刷新页面后重试');
-            if (!picked.length) { Swal.close(); return base.renderDownloadPanel([], this); }
+            if (!picked.length) { Swal.close(); base.renderDownloadPanel([], this); return; }
             // 类型只能来自页面清单，填不到就别猜
             if (picked.some(v => v && (v.isdir == null || v.isdir === ''))) return fail('读不到文件类型，请刷新页面后重试');
             let files = picked.filter(v => v && +v.isdir !== 1);
-            if (!files.length) { Swal.close(); return message.error('提示：分享页只支持文件，请勾选文件后再试！'); }
+            if (!files.length) { Swal.close(); message.error('提示：分享页只支持文件，请勾选文件后再试！'); return; }
             if (files.length > 20) return fail('一次最多取 20 个文件（当前 ' + files.length + ' 个），请勾选后再试');
             let bdstoken = ref.pick('bdstoken');
             // yun 域要同源，跨到 pan 会被 CORS 拦
