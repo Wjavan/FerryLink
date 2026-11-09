@@ -2738,7 +2738,6 @@
             let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
             let dump = null;
             try { dump = scope.locals && scope.locals.dump ? scope.locals.dump() : null; } catch (e) { }
-            if (!dump && scope !== window) { try { dump = window.locals.dump(); } catch (e) { } }
             let has = dump && typeof dump === 'object';
             let pick = (k) => {
                 let v = has ? dump[k] : null;
@@ -2772,10 +2771,9 @@
                     opt.body = body;
                 }
                 // 卡住会占死单飞位，到点自己断
-                let AC = (scope && scope.AbortController) || (typeof AbortController === 'function' ? AbortController : null);
-                let ctrl = AC ? new AC() : null;
-                if (ctrl) opt.signal = ctrl.signal;
-                let timer = setTimeout(() => { if (ctrl) ctrl.abort(); }, 20000);
+                let ctrl = new AbortController();
+                opt.signal = ctrl.signal;
+                let timer = setTimeout(() => ctrl.abort(), 20000);
                 return scope.fetch(url, opt).then(r => r.text()).then(t => { clearTimeout(timer); return toJson(t); }).catch((e) => {
                     clearTimeout(timer);
                     // POST 可能已被收下，重发等于提交两次
@@ -2818,8 +2816,7 @@
             try { ctx = require('system-core:context/context.js'); } catch (e) { }
             if (!ctx) { try { ctx = scope.require('system-core:context/context.js'); } catch (e) { } }
             try { if (ctx) return ctx.instanceForSystem.list.getSelected() || []; } catch (e) { }
-            // 行勾选是分享页的，别带进个人网盘
-            return pageNum === 'share' ? this._shareChecked() : null;
+            return this._shareChecked();
         },
         async _shareLink() {
             if (this._shareChain) return this._shareChain;
@@ -2835,7 +2832,6 @@
             if (ref.pick('loginstate') === '0') return fail('分享页下载需要登录百度网盘，请登录后重试');
             if (!ref.pick('shareid') || !ref.pick('share_uk')) return fail('页面里的分享标识不完整，请刷新页面后重试');
             let read = this._shareSelected();
-            // 名字和大小从页面清单补
             let meta = {};
             ref.list.forEach(v => { if (v && v.fs_id !== undefined && v.fs_id !== null) meta[String(v.fs_id)] = v; });
             let picked = (read || []).map(v => Object.assign({}, v, meta[String(v.fs_id)] || {}));
@@ -2949,10 +2945,12 @@
             }
         },
         getSelectedList() {
-            let got = this._shareSelected();
-            if (Array.isArray(got)) return got;   // 读不到才退回 Vue 列表
-            let panInfo = document.querySelector('.wp-s-core-pan');
-            return panInfo && panInfo.__vue__ ? panInfo.__vue__.selectedList : [];
+            try {
+                return require('system-core:context/context.js').instanceForSystem.list.getSelected();
+            } catch (e) {
+                let panInfo = document.querySelector('.wp-s-core-pan');
+                return panInfo && panInfo.__vue__ ? panInfo.__vue__.selectedList : [];
+            }
         },
         detectPage() {
             let path = location.pathname, hash = location.hash || '';
