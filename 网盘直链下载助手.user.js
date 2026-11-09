@@ -2217,9 +2217,9 @@
             .ctfile-button:active { background: #003eb3; border-color: #003eb3; }
             .ctfile-button:focus-visible { outline: 2px solid #0958d9; outline-offset: 2px; }
             .ctfile-button svg { width: 18px; height: 18px; flex-shrink: 0; }
-            .fl-button.fl-button-share { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; height: 36px; padding: 0 16px; margin: 0 8px 0 0; border: 1px solid #09aaff; border-radius: 18px; background: #f0faff; color: #09aaff; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
-            .fl-button.fl-button-share:hover { background: #e1f4ff; }
-            .fl-button.fl-button-share:focus-visible { outline: 2px solid #09aaff; outline-offset: 2px; }
+            .fl-button.fl-button-share { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; height: 36px; padding: 0 16px; margin: 0 8px 0 0; border: 1px solid var(--fl-bd, #09aaff); border-radius: 18px; background: var(--fl-bg, #f0faff); color: var(--fl-fg, #09aaff); font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
+            .fl-button.fl-button-share:hover { background: var(--fl-bg-h, #e1f4ff); }
+            .fl-button.fl-button-share:focus-visible { outline: 2px solid var(--fl-bd, #09aaff); outline-offset: 2px; }
             .fl-button.fl-button-share svg { width: 16px; height: 16px; flex-shrink: 0; }
             .ctfile-button-sm { height: 30px; padding: 0 14px; gap: 6px; font-size: 14px; font-weight: 600; }
             .ctfile-button-sm svg { width: 16px; height: 16px; }
@@ -2504,7 +2504,7 @@
             const $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><div style="color:#fff;background: ${color};border-color:${color}" class="g-button g-button-blue"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></div>`);
             const $mainButton = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; padding: 8px 16px; border: none;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
             const $shareButton = $(`<a class="fl-button fl-button-share" href="javascript:;" title="下载助手">${BTN_ICON}<span>下载助手</span></a>`);
-            if (color) $shareButton.css({ color: color, borderColor: color, background: color + '1f' });
+            if (color) [['--fl-fg', color], ['--fl-bd', color], ['--fl-bg', color + '1f'], ['--fl-bg-h', color + '3d']].forEach((kv) => $shareButton[0].style.setProperty(kv[0], kv[1]));
             base.mountWithRetry(() => {
                 pageNum = this.detectPage();
                 if (pageNum === 'share' && this._shareIsMine()) return true;
