@@ -19,7 +19,6 @@
 // @match             *://pan.baidu.com/disk/main*
 // @match             *://yun.baidu.com/disk/main*
 // @match             https://pan.baidu.com/s/*
-// @match             https://yun.baidu.com/s/*
 // @match             *://openapi.baidu.com/oauth/*
 // @match             *://www.aliyundrive.com/drive*
 // @match             *://www.alipan.com/drive*
@@ -2497,6 +2496,7 @@
                 // 不走 didOpen 调 showLoading：它包在 setTimeout 里，面板已在 DOM
                 Swal.fire({ title: '获取下载链接', html: '<div class="fl-fetch-progress">正在获取…</div>', allowOutsideClick: false, showConfirmButton: false });
                 Swal.showLoading();
+                if (pageNum === 'share') this.setBDUSS();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
         },
@@ -2516,7 +2516,8 @@
                 else $toolWrap.prepend($btn);
                 return true;
             }, () => !!this.detectPage());
-            this.setBDUSS();
+            // 分享页等点击再读，避免只打开页面就落库
+            if (pageNum !== 'share') this.setBDUSS();
             this.addPageListener();
         },
         async getToken() {
@@ -2772,7 +2773,7 @@
                 return scope.fetch(url, opt).then(r => r.text()).then(t => { clearTimeout(timer); return toJson(t); }).catch((e) => {
                     clearTimeout(timer);
                     // POST 可能已被收下，重发等于提交两次
-                    if (method !== 'GET') throw new Error('请求超时或失败，请稍后重试');
+                    if (method !== 'GET') throw new Error((e && e.message) || '请求超时或失败，请稍后重试');
                     return Promise.resolve(base.get(url)).then(toJson);
                 });
             }
@@ -2847,16 +2848,14 @@
             if (!files.length) { Swal.close(); message.error('提示：分享页只支持文件，请勾选文件后再试！'); return; }
             if (files.length > 20) return fail('一次最多取 20 个文件（当前 ' + files.length + ' 个），请减少勾选后重试');
             let bdstoken = ref.pick('bdstoken');
-            // yun 域要同源，跨到 pan 会被 CORS 拦
-            let api = (u) => u.replace('https://pan.baidu.com', location.origin);
-            let tplUrl = api(panInfo.pcs[2]) + '&surl=' + encodeURIComponent(ref.surl) + (bdstoken ? '&bdstoken=' + encodeURIComponent(bdstoken) : '');
+            let tplUrl = panInfo.pcs[2] + '&surl=' + encodeURIComponent(ref.surl) + (bdstoken ? '&bdstoken=' + encodeURIComponent(bdstoken) : '');
             let tpl = await this._shareRequest(tplUrl, 'GET');
             let sign = (tpl && tpl.data) || {};
             if (!sign.sign || !sign.timestamp) {
                 let why = tpl && tpl.errno ? '（errno ' + tpl.errno + (tpl.errmsg ? '：' + tpl.errmsg : '') + '）' : '';
                 return fail('取不到分享签名' + why + '，请刷新页面后重试');
             }
-            let dlUrl = api(panInfo.pcs[1]) + '&sign=' + encodeURIComponent(sign.sign) + '&timestamp=' + encodeURIComponent(sign.timestamp);
+            let dlUrl = panInfo.pcs[1] + '&sign=' + encodeURIComponent(sign.sign) + '&timestamp=' + encodeURIComponent(sign.timestamp);
             let uk = encodeURIComponent(ref.pick('share_uk'));
             let primaryid = encodeURIComponent(ref.pick('shareid'));
             let rows = [];
@@ -2882,10 +2881,12 @@
                         row = Object.assign(row, res.list[0]);
                     } else if (res && res.errno === 0 && typeof res.list === 'string') {
                         row.dlink = '该文件超过百度可获取限制，需保存到网盘后下载';
-                    } else if (res && (res.errno === 9019 || /needverify/.test(String(res.errmsg)))) {
-                        row.dlink = '百度要求身份验证，请刷新页面后重试';
+                    } else if (res && res.errno === 0) {
+                        row.dlink = '接口没有返回下载地址，请稍后重试';
                     } else if (res && res.errno === -20) {
                         row.dlink = '百度要求人机验证，请先在该页面点一次「下载」输完验证码，再回来重试';
+                    } else if (res && (res.errno === 9019 || /needverify/.test(String(res.errmsg)))) {
+                        row.dlink = '百度要求身份验证，请刷新页面后重试';
                     } else {
                         row.dlink = '获取下载地址失败：' + String((res && (res.errmsg || res.show_msg || res.errno)) || '').slice(0, 60);
                     }
