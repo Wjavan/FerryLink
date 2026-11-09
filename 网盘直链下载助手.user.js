@@ -2744,13 +2744,9 @@
                 v = v && typeof v === 'object' && 'value' in v ? v.value : v;
                 return v === undefined || v === null ? '' : String(v);
             };
-            let list = [];
-            try {
-                let raw = has && dump.file_list ? (dump.file_list.value || dump.file_list) : null;
-                list = Array.isArray(raw) ? raw : [];
-            } catch (e) { list = []; }
-            let sekey = '';
-            try { sekey = String(scope.currentSekey || ''); } catch (e) { }
+            let raw = has && dump.file_list ? (dump.file_list.value || dump.file_list) : null;
+            let list = Array.isArray(raw) ? raw : [];
+            let sekey = String(scope.currentSekey || '');
             let m = /^\/s\/([^/?#]+)/.exec(location.pathname);
             return { pick: pick, list: list, sekey: sekey, surl: m ? m[1] : '', hasDump: !!has };
         },
