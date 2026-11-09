@@ -2790,7 +2790,7 @@
         // 自己的分享有「取消分享」，不挂按钮
         _shareIsMine() {
             let bars = document.querySelectorAll('.share-header-bar, .module-share-top-bar, .module-share-bottom-bar');
-            return Array.from(bars).some(b => /取消分享/.test(b.textContent || ''));
+            return Array.from(bars).some(b => Array.from(b.querySelectorAll('button, a')).some(el => /^取消分享$/.test((el.textContent || '').trim())));
         },
         // data-file-key 就是 fs_id
         _shareChecked() {
@@ -2810,8 +2810,11 @@
             let ctx = null;
             try { ctx = require('system-core:context/context.js'); } catch (e) { }
             if (!ctx) { try { ctx = scope.require('system-core:context/context.js'); } catch (e) { } }
-            try { let got = ctx && ctx.instanceForSystem.list.getSelected(); if (Array.isArray(got)) return got; } catch (e) { }
-            return this._shareChecked();
+            let got = null;
+            try { got = ctx && ctx.instanceForSystem.list.getSelected(); } catch (e) { }
+            if (Array.isArray(got) && got.length) return got;
+            let dom = this._shareChecked();
+            return dom === null ? (Array.isArray(got) ? got : null) : dom;
         },
         async _shareLink() {
             if (this._shareChain) return this._shareChain;
