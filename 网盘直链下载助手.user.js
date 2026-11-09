@@ -2831,7 +2831,7 @@
             ref.list.forEach(v => { if (v && v.fs_id !== undefined && v.fs_id !== null) meta[String(v.fs_id)] = v; });
             let picked = (read || []).map(v => Object.assign({}, v, meta[String(v.fs_id)] || {}));
             // 认错了只会多提示，不会多下文件
-            let hasPicker = !!(document.querySelector('dd .wp-checkbox, dd input[type=checkbox], .JS-list-view-item .wp-checkbox, .JS-list-view-item input[type=checkbox], .module-share-file-main .wp-checkbox, .module-share-file-main input[type=checkbox]'));
+            let hasPicker = !!(document.querySelector('.JS-list-view-item .wp-checkbox, .JS-list-view-item input[type=checkbox]'));
             // 单文件页没勾选框，直接用清单里那一个
             if (!picked.length && ref.list.length === 1 && !hasPicker) picked = ref.list;
             // 多文件又没勾选框：不猜，明说
