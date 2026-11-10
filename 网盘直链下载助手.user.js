@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              FerryLink
 // @namespace         https://github.com/Wjavan/FerryLink
-// @version           1.6.2
+// @version           1.6.3
 // @author            Wjavan
 // @description       支持百度/阿里/天翼/迅雷/夸克/移动/城通网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/NDM/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
 // @copyright         2026, Wjavan (https://github.com/Wjavan)
@@ -18,6 +18,7 @@
 // @match             *://yun.baidu.com/disk/home*
 // @match             *://pan.baidu.com/disk/main*
 // @match             *://yun.baidu.com/disk/main*
+// @match             https://pan.baidu.com/s/*
 // @match             *://openapi.baidu.com/oauth/*
 // @match             *://www.aliyundrive.com/drive*
 // @match             *://www.alipan.com/drive*
@@ -2215,6 +2216,10 @@
             .ctfile-button:active { background: #003eb3; border-color: #003eb3; }
             .ctfile-button:focus-visible { outline: 2px solid #0958d9; outline-offset: 2px; }
             .ctfile-button svg { width: 18px; height: 18px; flex-shrink: 0; }
+            .fl-button.fl-button-share { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; height: 36px; padding: 0 16px; margin: 0 8px 0 0; border: 1px solid var(--fl-bd, #09aaff); border-radius: 18px; background: var(--fl-bg, #f0faff); color: var(--fl-fg, #09aaff); font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
+            .fl-button.fl-button-share:hover { background: var(--fl-bg-h, #e1f4ff); }
+            .fl-button.fl-button-share:focus-visible { outline: 2px solid var(--fl-bd, #09aaff); outline-offset: 2px; }
+            .fl-button.fl-button-share svg { width: 16px; height: 16px; flex-shrink: 0; }
             .ctfile-button-sm { height: 30px; padding: 0 14px; gap: 6px; font-size: 14px; font-weight: 600; }
             .ctfile-button-sm svg { width: 16px; height: 16px; }
             /* 跟「上传/上传文件夹」同款：色值、高度、圆角挂载时从旁边按钮读回来（--fl-*） */
@@ -2369,7 +2374,7 @@
     };
     const LOCAL_CONFIG = {
         baidu: {
-            pcs: {"0": "https://pan.baidu.com/rest/2.0/xpan/multimedia?method=filemetas&dlink=1", "1": "https://pan.baidu.com/api/sharedownload?channel=chunlei&clienttype=12&web=1&app_id=250528", "2": "https://pan.baidu.com/share/tplconfig?fields=sign,timestamp&channel=chunlei&web=1&app_id=250528&clienttype=0", "3": "https://openapi.baidu.com/oauth/2.0/authorize?client_id=IlLqBbU3GjQ0t46TRwFateTprHWl39zF&response_type=token&redirect_uri=oob&confirm_login=0&scope=basic,netdisk", "4": "https://openapi.baidu.com/oauth/2.0/login_success"},
+            pcs: {"0": "https://pan.baidu.com/rest/2.0/xpan/multimedia?method=filemetas&dlink=1", "1": "https://pan.baidu.com/api/sharedownload?channel=chunlei&web=1&app_id=250528", "2": "https://pan.baidu.com/share/tplconfig?fields=sign,timestamp&channel=chunlei&web=1&app_id=250528&clienttype=0", "3": "https://openapi.baidu.com/oauth/2.0/authorize?client_id=IlLqBbU3GjQ0t46TRwFateTprHWl39zF&response_type=token&redirect_uri=oob&confirm_login=0&scope=basic,netdisk", "4": "https://openapi.baidu.com/oauth/2.0/login_success"},
             btn: {"home": ".tcuLAu", "main": ".wp-s-agile-tool-bar__header"},
             ua: "pan.baidu.com",
             api: {0: "API 下载", 1: ''},
@@ -2491,20 +2496,28 @@
                 // 不走 didOpen 调 showLoading：它包在 setTimeout 里，面板已在 DOM
                 Swal.fire({ title: '获取下载链接', html: '<div class="fl-fetch-progress">正在获取…</div>', allowOutsideClick: false, showConfirmButton: false });
                 Swal.showLoading();
+                if (pageNum === 'share') this.setBDUSS();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
         },
         addButton() {
             const $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><div style="color:#fff;background: ${color};border-color:${color}" class="g-button g-button-blue"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></div>`);
             const $mainButton = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; padding: 8px 16px; border: none;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
+            const $shareButton = $(`<a class="fl-button fl-button-share" href="javascript:;" title="下载助手">${BTN_ICON}<span>下载助手</span></a>`);
+            if (color) [['--fl-fg', color], ['--fl-bd', color], ['--fl-bg', color + '1f'], ['--fl-bg-h', color + '3d']].forEach((kv) => $shareButton[0].style.setProperty(kv[0], kv[1]));
             base.mountWithRetry(() => {
                 pageNum = this.detectPage();
-                let $toolWrap = $(pageNum === 'home' ? panInfo.btn.home : panInfo.btn.main);
+                if (pageNum === 'share' && this._shareIsMine()) return true;
+                let sel = pageNum === 'share' ? this._shareMountSel() : (panInfo.btn[pageNum] || panInfo.btn.main);
+                let $toolWrap = pageNum === 'share' ? $(sel).first() : $(sel);
                 if (!$toolWrap.length) return false;
-                $toolWrap.prepend(pageNum === 'main' ? $mainButton : $button);
+                let $btn = pageNum === 'main' ? $mainButton : (pageNum === 'share' ? $shareButton : $button);
+                if (pageNum === 'share' && !/x-button-box/.test(sel)) $toolWrap.append($btn);
+                else $toolWrap.prepend($btn);
                 return true;
             }, () => !!this.detectPage());
-            this.setBDUSS();
+            // 分享页等点击再读，避免只打开页面就落库
+            if (pageNum !== 'share') this.setBDUSS();
             this.addPageListener();
         },
         async getToken() {
@@ -2607,6 +2620,7 @@
                 }
         },
         async getPCSLink(maxRequestTime = 1) {
+            if (pageNum === 'share') return this._shareLink();
             selectedFiles = this.getSelectedList();
             let fidArray = this._getFidArray(), res;
             const authFail = () => { Swal.close(); return base.renderErrorPanel('百度授权未完成：请刷新重试，仍失败请确认已登录百度', this); };
@@ -2721,12 +2735,177 @@
                 base.renderDownloadPanel(normalized, this);
             }
         },
-        normalizeList(list) {
+        _shareInfo() {
+            let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+            let dump = null;
+            try { dump = scope.locals && scope.locals.dump ? scope.locals.dump() : null; } catch (e) { }
+            let has = dump && typeof dump === 'object';
+            let pick = (k) => {
+                let v = has ? dump[k] : null;
+                v = v && typeof v === 'object' && 'value' in v ? v.value : v;
+                return v === undefined || v === null ? '' : String(v);
+            };
+            let raw = has && dump.file_list ? (dump.file_list.value || dump.file_list) : null;
+            let list = Array.isArray(raw) ? raw : [];
+            let sekey = String(scope.currentSekey || '');
+            let m = /^\/s\/([^/?#]+)/.exec(location.pathname);
+            return { pick: pick, list: list, sekey: sekey, surl: m ? m[1] : '', hasDump: !!has };
+        },
+        // 要带页面来源，用页面 fetch 发
+        _shareRequest(url, method, body) {
+            let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+            let toJson = (t) => {
+                if (t && typeof t === 'object') return t;
+                try { return JSON.parse(t); } catch (e) {
+                    throw new Error('接口返回的不是数据（可能未登录或页面已改版）');
+                }
+            };
+            if (typeof scope.fetch === 'function') {
+                let opt = { method: method, credentials: 'include' };
+                if (method !== 'GET') {
+                    opt.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+                    opt.body = body;
+                }
+                // 卡住会占死单飞位，到点自己断
+                let ctrl = new AbortController();
+                opt.signal = ctrl.signal;
+                let timer = setTimeout(() => ctrl.abort(), 20000);
+                return scope.fetch(url, opt).then(r => r.text()).then(t => { clearTimeout(timer); return toJson(t); }).catch((e) => {
+                    clearTimeout(timer);
+                    // POST 可能已被收下，重发等于提交两次
+                    if (method !== 'GET') throw new Error(e && e.name === 'AbortError' ? '请求超时，请稍后重试' : ((e && e.message) || '请求超时或失败，请稍后重试'));
+                    return Promise.resolve(base.get(url)).then(toJson);
+                });
+            }
+            return method === 'GET'
+                ? Promise.resolve(base.get(url)).then(toJson)
+                : Promise.resolve(base.post(url, body, { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': location.origin }, 'text')).then(toJson);
+        },
+        _shareMountSel() {
+            let cands = ['.module-share-bottom-bar .x-button-box', '.module-share-top-bar .x-button-box', '.share-header-bar'];
+            for (let i = 0; i < cands.length; i++) {
+                if (document.querySelector(cands[i])) return cands[i];
+            }
+            return '';
+        },
+        // 自己的分享有「取消分享」，不挂按钮
+        _shareIsMine() {
+            let bars = document.querySelectorAll('.share-header-bar, .module-share-top-bar, .module-share-bottom-bar');
+            return Array.from(bars).some(b => Array.from(b.querySelectorAll('button, a')).some(el => /^取消分享$/.test((el.textContent || '').trim())));
+        },
+        // data-file-key 就是 fs_id
+        _shareChecked() {
+            let rows = document.querySelectorAll('.JS-list-view-item[data-file-key]');
+            if (!rows.length) return null;
+            let picked = [];
+            rows.forEach(r => {
+                if (!r.classList.contains('JS-item-active') && !r.querySelector('.wp-checkbox--checked')) return;
+                let id = r.getAttribute('data-file-key') || '';
+                if (id) picked.push({ fs_id: id });
+            });
+            return picked;
+        },
+        // 读不到返回 null，跟「确实没勾」区分开
+        _shareSelected() {
+            let scope = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+            let ctx = null;
+            try { ctx = require('system-core:context/context.js'); } catch (e) { }
+            if (!ctx) { try { ctx = scope.require('system-core:context/context.js'); } catch (e) { } }
+            let got = null;
+            try { got = ctx && ctx.instanceForSystem.list.getSelected(); } catch (e) { }
+            if (Array.isArray(got) && got.length) return got;
+            let dom = this._shareChecked();
+            return dom === null ? (Array.isArray(got) ? got : null) : dom;
+        },
+        async _shareLink() {
+            if (this._shareChain) return this._shareChain;
+            this._shareChain = this._shareFetch();
+            try { return await this._shareChain; } finally { this._shareChain = null; }
+        },
+        async _shareFetch() {
+            let ref = this._shareInfo();
+            const fail = (msg) => { Swal.close(); base.renderErrorPanel(msg, this); };
+            if (!ref.surl) return fail('读不到分享标识，请刷新页面后重试');
+            if (!ref.hasDump) return fail('读不到页面信息（locals 未就绪），请刷新页面后重试');
+            // 只有明确未登录才拦，字段缺失交给接口报错
+            if (ref.pick('loginstate') === '0') return fail('分享页下载需要登录百度网盘，请登录后重试');
+            if (!ref.pick('shareid') || !ref.pick('share_uk')) return fail('页面里的分享标识不完整，请刷新页面后重试');
+            let read = this._shareSelected();
+            let meta = {};
+            ref.list.forEach(v => { if (v && v.fs_id !== undefined && v.fs_id !== null) meta[String(v.fs_id)] = v; });
+            let picked = (read || []).map(v => Object.assign({}, v, meta[String(v.fs_id)] || {}));
+            // 认错了只会多提示，不会多下文件
+            let hasPicker = !!(document.querySelector('.JS-list-view-item .wp-checkbox, .JS-list-view-item input[type=checkbox]'));
+            // 单文件页没勾选框，直接用清单里那一个
+            if (!picked.length && ref.list.length === 1 && !hasPicker) picked = ref.list;
+            // 多文件又没勾选框：不猜，明说
+            if (!picked.length && !hasPicker && ref.list.length > 1) return fail('页面上没有勾选框，请刷新页面或换用支持的分享版式');
+            if (!picked.length && read === null) return fail('读不到页面的勾选状态，请刷新页面后重试');
+            if (!picked.length) { Swal.close(); base.renderDownloadPanel([], this); return; }
+            // 类型只能来自页面清单，填不到就别猜
+            if (picked.some(v => v && (v.isdir == null || v.isdir === ''))) return fail('读不到文件类型，请刷新页面后重试');
+            let files = picked.filter(v => v && +v.isdir !== 1);
+            if (!files.length) { Swal.close(); message.error('提示：分享页只支持文件，请勾选文件后再试！'); return; }
+            if (files.length > 20) return fail('一次最多取 20 个文件（当前 ' + files.length + ' 个），请减少勾选后重试');
+            let bdstoken = ref.pick('bdstoken');
+            let tplUrl = panInfo.pcs[2] + '&surl=' + encodeURIComponent(ref.surl) + (bdstoken ? '&bdstoken=' + encodeURIComponent(bdstoken) : '');
+            let tpl = await this._shareRequest(tplUrl, 'GET');
+            let sign = (tpl && tpl.data) || {};
+            if (!sign.sign || !sign.timestamp) {
+                let why = tpl && tpl.errno ? '（errno ' + tpl.errno + (tpl.errmsg ? '：' + tpl.errmsg : '') + '）' : '';
+                return fail('取不到分享签名' + why + '，请刷新页面后重试');
+            }
+            let dlUrl = panInfo.pcs[1] + '&sign=' + encodeURIComponent(sign.sign) + '&timestamp=' + encodeURIComponent(sign.timestamp);
+            let uk = encodeURIComponent(ref.pick('share_uk'));
+            let primaryid = encodeURIComponent(ref.pick('shareid'));
+            let rows = [];
+            for (let i = 0; i < files.length; i++) {
+                let it = files[i];
+                if (files.length > 1) base.tipLoading('正在获取下载链接 ' + (i + 1) + '/' + files.length + '…');
+                let fid = it.fs_id || it.file_id || it.id || '';
+                let row = { server_filename: it.server_filename || it.filename || '', size: it.size, isdir: it.isdir };
+                if (!fid) {
+                    row.dlink = '读不到文件标识，请刷新页面后重试';
+                    rows.push(row);
+                    continue;
+                }
+                try {
+                    let form = 'encrypt=0&product=share'
+                        + (ref.sekey ? '&extra=' + encodeURIComponent(JSON.stringify({ sekey: ref.sekey })) : '')
+                        + '&timestamp=' + encodeURIComponent(sign.timestamp)
+                        + '&uk=' + uk
+                        + '&primaryid=' + primaryid
+                        + '&fid_list=' + encodeURIComponent(JSON.stringify([String(fid)]));
+                    let res = await this._shareRequest(dlUrl, 'POST', form);
+                    if (res && res.errno === 0 && Array.isArray(res.list) && res.list.length) {
+                        row = Object.assign(row, res.list[0]);
+                    } else if (res && res.errno === 0 && typeof res.list === 'string') {
+                        row.dlink = '该文件超过百度可获取限制，需保存到网盘后下载';
+                    } else if (res && res.errno === 0) {
+                        row.dlink = '接口没有返回下载地址，请稍后重试';
+                    } else if (res && res.errno === -20) {
+                        row.dlink = '百度要求人机验证，请先在该页面点一次「下载」输完验证码，再回来重试';
+                    } else if (res && (res.errno === 9019 || /needverify/.test(String(res.errmsg)))) {
+                        row.dlink = '百度要求身份验证，请刷新页面后重试';
+                    } else {
+                        row.dlink = '获取下载地址失败：' + String((res && (res.errmsg || res.show_msg || res.errno)) || '').slice(0, 60);
+                    }
+                } catch (e) {
+                    row.dlink = '获取下载地址失败：' + ((e && e.message) || '未知错误');
+                }
+                rows.push(row);
+                if (i + 1 < files.length) await base.sleep(1000);
+            }
+            base.renderDownloadPanel(this.normalizeList(rows, true), this);
+        },
+        normalizeList(list, noAuth) {
+            // 分享直链不需要授权，别贴个人令牌
+            let token = noAuth ? '' : base.getValue('baidu_access_token');
             return list.map(v => {
                 let dlink = '';
                 if (v.dlink) {
-                    dlink = /^https?:\/\//.test(v.dlink)
-                        ? v.dlink + '&access_token=' + base.getValue('baidu_access_token')
+                    dlink = /^https?:\/\//.test(v.dlink) && token
+                        ? v.dlink + '&access_token=' + token
                         : v.dlink;
                 }
                 return {
@@ -2780,6 +2959,7 @@
                 if (/^#\/recyclebin/.test(hash)) return '';
                 return 'main';
             }
+            if (/^\/s\//.test(path)) return 'share';
             return '';
         },
         async initFerryLink() {
@@ -2791,7 +2971,7 @@
             this.addButton();
             base.createTip();
             base.registerMenuCommand();
-            this.preflightAccount();
+            if (pageNum !== 'share') this.preflightAccount();
         },
         async initAuthorize() {
             let authPollTimer = setInterval(() => {
