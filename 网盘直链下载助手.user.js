@@ -508,7 +508,7 @@
             if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(s)) s = '_' + s;   // 设备名不能直接做文件名
             const m = /^(.*?)(\.[A-Za-z0-9_]{1,16})$/.exec(s);
             let stem = m ? m[1] : s, ext = m ? m[2] : '';
-            // 给全路径与 .aria2 留余量
+            // 给 .aria2 留余量
             let cps = Array.from(stem);
             while (cps.length > 1 && (cps.length + ext.length > 100 || new TextEncoder().encode(cps.join('') + ext).length > 200)) cps.pop();
             return (cps.join('') + ext).replace(/[. ]+$/, '') || 'download';
