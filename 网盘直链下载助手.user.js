@@ -498,20 +498,18 @@
             return rpc;
         },
         safeRpcFilename(name) {
+            // 字符集归网盘管，这里只挡路径分隔符与长度
             let s = String(name || '')
                 .replace(/[\x00-\x1F\x7F]/g, '')
-                .replace(/[\\/:*?"<>|]/g, '_')
+                .replace(/[/\\]/g, '_')
                 .replace(/\.\./g, '_')
-                .replace(/^\.+/, '_')
-                .replace(/[. ]+$/, '');                      // Windows 会吞掉结尾的点和空格
-            if (!s) return 'download';
-            if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(s)) s = '_' + s;   // 设备名不能直接做文件名
+                .replace(/^\.+/, '_');
             const m = /^(.*?)(\.[A-Za-z0-9_]{1,16})$/.exec(s);
             let stem = m ? m[1] : s, ext = m ? m[2] : '';
-            // 给 .aria2 留余量
-            let cps = Array.from(stem);
-            while (cps.length > 1 && (cps.length + ext.length > 100 || new TextEncoder().encode(cps.join('') + ext).length > 200)) cps.pop();
-            return (cps.join('') + ext).replace(/[. ]+$/, '') || 'download';
+            // 上限 255，留 6 个给 .aria2 控制文件
+            let cps = Array.from(stem), len = stem.length;
+            while (cps.length > 1 && len + ext.length > 249) len -= cps.pop().length;
+            return cps.join('') + ext || 'download';
         },
         // 裸盘符不是目录，aria2 会拼成 C:/文件名
         rpcDir(dir) {
@@ -1815,7 +1813,9 @@
                     else { fail++; $cell.html(MARK_NO); base._markFailWithReason($cell, base._lastNotice); }
                 }
                 $btn.text('推送完成：成功 ' + ok + '，失败 ' + fail);
-                if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明', 'error'); else if (ok > 0) base.panelNotice('已提交 ' + ok + ' 个任务给 Aria2，进度请看下载器' + (base._rpcDirNote ? '；' + base._rpcDirNote : ''), base._rpcDirNote ? 'warning' : 'success');
+                const dirNote = base._rpcDirNote ? '；' + base._rpcDirNote : '';
+                if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明' + dirNote, 'error');
+                else if (ok > 0) base.panelNotice('已提交 ' + ok + ' 个任务给 Aria2，进度请看下载器' + dirNote, 'success');
                 setTimeout(() => base._updateMainButton(), 4000);
             } else if (pid === 'bc-rpc') {
                 // 先探远程，通就静默推送，不通调本地 BC
@@ -2191,7 +2191,6 @@
             .fl-dl-warning-bar { background: #3f2226; color: #e06c75; }
             .fl-dl-toast { background: #2a2b2c; color: #e8eaed; border-color: #3f4041; }
             .fl-dl-toast-success { border-color: #67c23a; color: #95d475; }
-            .fl-dl-toast-warning { border-color: #e6a23c; color: #ebb563; }
             .fl-dl-toast-error { border-color: #f56c6c; color: #f89898; }
             .fl-dl-empty { color: #8b8e93; }
             .fl-dl-empty svg { color: #5e6165; }
@@ -2359,7 +2358,6 @@
             .fl-dl-toast { position: fixed; top: 10vh; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; background: #fff; color: #303133; border: 1px solid #e6e8eb; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 500; box-shadow: 0 4px 16px rgb(28 28 32 / 18%), 0 1px 3px rgb(28 28 32 / 12%); max-width: 80vw; }
             .fl-dl-toast span { word-break: break-all; }
             .fl-dl-toast-success { border-color: #67c23a; color: #2f7a17; }
-            .fl-dl-toast-warning { border-color: #e6a23c; color: #8a5a00; }
             .fl-dl-toast-error { border-color: #f56c6c; color: #c03639; }
             .fl-dl-empty { padding: 14px 28px; text-align: center; color: #6b7078; font-size: 14.5px; }
             .fl-dl-empty svg { display: block; margin: 0 auto 10px; color: #c3c8cf; }
