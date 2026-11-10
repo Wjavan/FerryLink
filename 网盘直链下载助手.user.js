@@ -511,13 +511,14 @@
             // 给全路径与 .aria2 留余量
             let cps = Array.from(stem);
             while (cps.length > 1 && (cps.length + ext.length > 100 || new TextEncoder().encode(cps.join('') + ext).length > 200)) cps.pop();
-            return cps.join('') + ext;
+            return (cps.join('') + ext).replace(/[. ]+$/, '') || 'download';
         },
         // 裸盘符不是目录，aria2 会拼成 C:/文件名
         rpcDir(dir) {
-            const s = String(dir == null ? '' : dir).trim().replace(/^["']+|["']+$/g, '').replace(/：/g, ':').trim();
+            const s = String(dir == null ? '' : dir).trim().replace(/^["']+|["']+$/g, '').replace(/^([A-Za-z])：/, '$1:').trim();
             if (!s) return { dir: undefined, err: '' };
-            if (!/^(?:[A-Za-z]:[\\/]|\\\\|\/)/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是完整路径，本次改用下载器默认目录' };
+            if (/[\x00-\x1F\x7F]/.test(s)) return { dir: undefined, err: '保存路径含不可见字符，本次改用下载器默认目录' };
+            if (!/^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/]|\/)/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是完整路径，本次改用下载器默认目录；请填完整路径' };
             return { dir: s, err: '' };
         },
         getRandomString(len) {
@@ -2190,6 +2191,7 @@
             .fl-dl-warning-bar { background: #3f2226; color: #e06c75; }
             .fl-dl-toast { background: #2a2b2c; color: #e8eaed; border-color: #3f4041; }
             .fl-dl-toast-success { border-color: #67c23a; color: #95d475; }
+            .fl-dl-toast-warning { border-color: #e6a23c; color: #ebb563; }
             .fl-dl-toast-error { border-color: #f56c6c; color: #f89898; }
             .fl-dl-empty { color: #8b8e93; }
             .fl-dl-empty svg { color: #5e6165; }
@@ -2357,6 +2359,7 @@
             .fl-dl-toast { position: fixed; top: 10vh; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; background: #fff; color: #303133; border: 1px solid #e6e8eb; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 500; box-shadow: 0 4px 16px rgb(28 28 32 / 18%), 0 1px 3px rgb(28 28 32 / 12%); max-width: 80vw; }
             .fl-dl-toast span { word-break: break-all; }
             .fl-dl-toast-success { border-color: #67c23a; color: #2f7a17; }
+            .fl-dl-toast-warning { border-color: #e6a23c; color: #8a5a00; }
             .fl-dl-toast-error { border-color: #f56c6c; color: #c03639; }
             .fl-dl-empty { padding: 14px 28px; text-align: center; color: #6b7078; font-size: 14.5px; }
             .fl-dl-empty svg { display: block; margin: 0 auto 10px; color: #c3c8cf; }
