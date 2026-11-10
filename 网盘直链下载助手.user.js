@@ -2509,7 +2509,7 @@
                 pageNum = this.detectPage();
                 if (pageNum === 'share' && this._shareIsMine()) return true;
                 let sel = pageNum === 'share' ? this._shareMountSel() : (panInfo.btn[pageNum] || panInfo.btn.main);
-                let $toolWrap = $(sel);
+                let $toolWrap = pageNum === 'share' ? $(sel).first() : $(sel);
                 if (!$toolWrap.length) return false;
                 let $btn = pageNum === 'main' ? $mainButton : (pageNum === 'share' ? $shareButton : $button);
                 if (pageNum === 'share' && !/x-button-box/.test(sel)) $toolWrap.append($btn);
