@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              FerryLink
 // @namespace         https://github.com/Wjavan/FerryLink
-// @version           1.6.3
+// @version           1.6.4
 // @author            Wjavan
 // @description       支持百度/阿里/天翼/迅雷/夸克/移动/城通网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/NDM/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
 // @copyright         2026, Wjavan (https://github.com/Wjavan)
@@ -491,16 +491,77 @@
                 base.panelNotice('RPC ' + partErr, 'error');
                 return null;
             }
+            rpc.dir = base.normalizeRpcDir(rpc.dir);
+            if (rpc.dir) {
+                const dirErr = base.rpcDirProblem(rpc.dir);
+                if (dirErr) { base.warnRpcDir(rpc.dir); rpc.dir = undefined; }
+            } else {
+                rpc.dir = undefined;   // 不发这个键，下载器才会用自己的默认目录
+            }
             rpc.url = `${rpc.domain}:${rpc.port}${rpc.path}`;
             return rpc;
         },
         safeRpcFilename(name) {
-            return String(name || '')
+            let s = String(name || '')
                 .replace(/[\x00-\x1F\x7F]/g, '')
-                .replace(/[/\\]/g, '_')
+                .replace(/[\\/:*?"<>|]/g, '_')
                 .replace(/\.\./g, '_')
                 .replace(/^\.+/, '_')
-                .slice(0, 255);
+                .replace(/[. ]+$/, '');                      // Windows 会吞掉结尾的点和空格
+            if (!s) return 'download';
+            if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(s)) s = '_' + s;   // 设备名不能直接做文件名
+            const m = /^(.*?)(\.[A-Za-z0-9_]{1,16})$/.exec(s);
+            let stem = m ? m[1] : s, ext = m ? m[2] : '';
+            // 全路径要留在 260 以内，aria2 还会多写一个 .aria2 控制文件
+            let cps = Array.from(stem);
+            while (cps.length > 1 && (cps.length + ext.length > 100 || new TextEncoder().encode(cps.join('') + ext).length > 200)) cps.pop();
+            return cps.join('') + ext;
+        },
+        // 资源管理器「复制路径」带引号，中文输入法的冒号是全角
+        normalizeRpcDir(dir) {
+            return String(dir == null ? '' : dir)
+                .trim()
+                .replace(/^["']+|["']+$/g, '')
+                .replace(/：/g, ':')
+                .trim();
+        },
+        // 只收绝对路径；裸盘符在 Windows 下不是目录，aria2 会拼成 C:/文件名
+        rpcDirProblem(dir) {
+            const s = String(dir == null ? '' : dir)
+                .trim()
+                .replace(/^["']+|["']+$/g, '')
+                .replace(/：/g, ':')
+                .trim();
+            if (!s) return '';
+            if (/^[A-Za-z]:$/.test(s)) return '保存路径「' + s + '」只有盘符，本次改用下载器默认目录；请填完整路径';
+            if (!/^(?:[A-Za-z]:[\\/]|\\\\|\/)/.test(s)) return '保存路径「' + s + '」不是绝对路径，本次改用下载器默认目录；请填完整路径';
+            return '';
+        },
+        // 批量时每个文件都会过一次，同一个值只提醒一次
+        warnRpcDir(dir) {
+            if (base._rpcDirWarned === dir) return;
+            base._rpcDirWarned = dir;
+            base.panelNotice(base.rpcDirProblem(dir), 'warning', 6000);
+        },
+        // 七家共用：dir 省略与文件名清洗只写一处
+        async _rpcAddUri(rpc, filename, link, options, httpHeaders) {
+            const ariaOptions = Object.assign({}, options || {}, { out: base.safeRpcFilename(filename) });
+            if (rpc.dir) ariaOptions.dir = rpc.dir;
+            const rpcData = {
+                id: new Date().getTime(),
+                jsonrpc: '2.0',
+                method: 'aria2.addUri',
+                params: [`token:${rpc.token}`, [link], ariaOptions],
+            };
+            try {
+                const res = await base.post(rpc.url, rpcData, httpHeaders || {}, '');
+                if (res && res.result) return 'success';
+                base.panelNotice('Aria2 拒绝请求：' + ((res && res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
+                return 'fail';
+            } catch (e) {
+                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
+                return 'fail';
+            }
         },
         getRandomString(len) {
             len = len || 16;
@@ -689,7 +750,7 @@
             }
             return compFiber.stateNode || compFiber;
         },
-        rpcDefaults: { domain: 'http://localhost', port: '16800', path: '/jsonrpc', token: '', dir: 'C:' },
+        rpcDefaults: { domain: 'http://localhost', port: '16800', path: '/jsonrpc', token: '', dir: '' },
         bcDefaults: { domain: 'http://localhost', port: '8080', path: '/panel/task_add_httpftp_result', user: '', pass: '', dir: '' },
         initDefaultConfig() {
             let value = [
@@ -781,7 +842,7 @@
                 <label class="fl-setting-label"><div class="fl-label">RPC端口</div><input type="text" placeholder="端口号，例如：Motrix为16800" class="fl-input listener-port" value="${base.esc(base.getValue('setting_rpc_port'))}"></label>
                 <label class="fl-setting-label"><div class="fl-label">RPC路径</div><input type="text" placeholder="路径，默认为/jsonrpc" class="fl-input listener-path" value="${base.esc(base.getValue('setting_rpc_path'))}"></label>
                 <label class="fl-setting-label"><div class="fl-label">RPC密钥</div><input type="password" autocomplete="off" placeholder="无密钥无需填写" class="fl-input listener-token" value="${base.esc(base.getValue('setting_rpc_token'))}"></label>
-                <label class="fl-setting-label"><div class="fl-label">保存路径</div><input type="text" placeholder="留空则使用 aria2 默认下载目录；Windows 示例：C:\\Downloads" class="fl-input listener-dir" value="${base.esc(base.getValue('setting_rpc_dir'))}"></label>
+                <label class="fl-setting-label"><div class="fl-label">保存路径</div><input type="text" placeholder="留空则使用下载器默认目录；Windows 请填完整路径，如 C:\\Downloads（目录需已存在）" class="fl-input listener-dir" value="${base.esc(base.getValue('setting_rpc_dir'))}"></label>
                 <div class="fl-setting-actions"><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-reset-rpc">恢复默认</button><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-test-rpc">测试连接</button></div>
             </div>`;
             Swal.fire({
@@ -1795,7 +1856,7 @@
                     else { fail++; $cell.html(MARK_NO); base._markFailWithReason($cell, base._lastNotice); }
                 }
                 $btn.text('推送完成：成功 ' + ok + '，失败 ' + fail);
-                if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明', 'error'); else if (ok > 0) base.panelNotice('已推送至 Aria2，下载已开始', 'success');
+                if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明', 'error'); else if (ok > 0) base.panelNotice('已提交 ' + ok + ' 个任务给 Aria2，进度请看下载器', 'success');
                 setTimeout(() => base._updateMainButton(), 4000);
             } else if (pid === 'bc-rpc') {
                 // 先探远程，通就静默推送，不通调本地 BC
@@ -2923,26 +2984,9 @@
             let rpc = base._rpcConfig();
             if (!rpc) return 'fail';
             let BDUSS = this.getBDUSS();
-            let url = rpc.url;
-            let rpcData = {
-                id: new Date().getTime(),
-                jsonrpc: '2.0',
-                method: 'aria2.addUri',
-                params: [`token:${rpc.token}`, [link], {
-                    dir: rpc.dir,
-                    out: base.safeRpcFilename(filename),
-                    header: [`User-Agent: ${panInfo.ua}`, ...(BDUSS ? [`Cookie: BDUSS=${BDUSS}`] : [])],
-                }]
-            };
-            try {
-                let res = await base.post(url, rpcData, {"User-Agent": panInfo.ua}, '');
-                if (res.result) return 'success';
-                base.panelNotice('Aria2 拒绝请求：' + ((res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
-                return 'fail';
-            } catch (e) {
-                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
-                return 'fail';
-            }
+            return base._rpcAddUri(rpc, filename, link, {
+                header: [`User-Agent: ${panInfo.ua}`, ...(BDUSS ? [`Cookie: ***`] : [])],
+            }, { "User-Agent": panInfo.ua });
         },
         getSelectedList() {
             try {
@@ -3142,27 +3186,9 @@
         async sendLinkToRPC(filename, link) {
             let rpc = base._rpcConfig();
             if (!rpc) return 'fail';
-            let url = rpc.url;
-                        const UA = navigator.userAgent;
-                        let rpcData = {
-                            id: new Date().getTime(),
-                            jsonrpc: '2.0',
-                            method: 'aria2.addUri',
-                            params: [`token:${rpc.token}`, [link], {
-                                dir: rpc.dir,
-                                out: base.safeRpcFilename(filename),
-                                header: [`Referer: ${location.origin}/`, `Origin: ${location.origin}`, `User-Agent: ${UA}`]
-                            }]
-                        };
-                        try {
-                            let res = await base.post(url, rpcData, {}, '');
-                if (res.result) return 'success';
-                base.panelNotice('Aria2 拒绝请求：' + ((res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
-                return 'fail';
-            } catch (e) {
-                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
-                return 'fail';
-            }
+            return base._rpcAddUri(rpc, filename, link, {
+                header: [`Referer: ${location.origin}/`, `Origin: ${location.origin}`, `User-Agent: ${navigator.userAgent}`],
+            }, {});
         },
         getSelectedList() {
             try {
@@ -3353,26 +3379,7 @@
         async sendLinkToRPC(filename, link) {
             let rpc = base._rpcConfig();
             if (!rpc) return 'fail';
-            let url = rpc.url;
-            let rpcData = {
-                id: new Date().getTime(),
-                jsonrpc: '2.0',
-                method: 'aria2.addUri',
-                params: [`token:${rpc.token}`, [link], {
-                    dir: rpc.dir,
-                    out: base.safeRpcFilename(filename),
-                    header: []
-                }]
-            };
-            try {
-                let res = await base.post(url, rpcData, {}, '');
-                if (res.result) return 'success';
-                base.panelNotice('Aria2 拒绝请求：' + ((res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
-                return 'fail';
-            } catch (e) {
-                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
-                return 'fail';
-            }
+            return base._rpcAddUri(rpc, filename, link, { header: [] }, {});
         },
         getSelectedList() {
             try {
@@ -3639,30 +3646,11 @@
         async sendLinkToRPC(filename, link) {
             let rpc = base._rpcConfig();
             if (!rpc) return 'fail';
-            let url = rpc.url;
             let authCookie = this._getAuthCookie ? this._getAuthCookie() : '';
             let rpcHeader = authCookie
                 ? [`Cookie: ${authCookie}`, `User-Agent: ${navigator.userAgent}`]
                 : [];
-            let rpcData = {
-                id: new Date().getTime(),
-                jsonrpc: '2.0',
-                method: 'aria2.addUri',
-                params: [`token:${rpc.token}`, [link], {
-                    dir: rpc.dir,
-                    out: base.safeRpcFilename(filename),
-                    header: rpcHeader
-                }]
-            };
-            try {
-                let res = await base.post(url, rpcData, {}, '');
-                if (res.result) return 'success';
-                base.panelNotice('Aria2 拒绝请求：' + ((res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
-                return 'fail';
-            } catch (e) {
-                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
-                return 'fail';
-            }
+            return base._rpcAddUri(rpc, filename, link, { header: rpcHeader }, {});
         },
         getSelectedList() {
             try {
@@ -3859,28 +3847,11 @@
         async sendLinkToRPC(filename, link) {
             let rpc = base._rpcConfig();
             if (!rpc) return 'fail';
-            let url = rpc.url;
-            let rpcData = {
-                id: new Date().getTime(),
-                jsonrpc: '2.0',
-                method: 'aria2.addUri',
-                params: [`token:${rpc.token}`, [link], {
-                    dir: rpc.dir,
-                    out: base.safeRpcFilename(filename),
-                    header: [`User-Agent: ${panInfo.ua}`, `Cookie: ${String(document.cookie)}`],
-                    'user-agent': panInfo.ua,
-                    'referer': `${location.origin}/`
-                }]
-            };
-            try {
-                let res = await base.post(url, rpcData, {}, '');
-                if (res.result) return 'success';
-                base.panelNotice('Aria2 拒绝请求：' + ((res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
-                return 'fail';
-            } catch (e) {
-                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
-                return 'fail';
-            }
+            return base._rpcAddUri(rpc, filename, link, {
+                header: [`User-Agent: ${panInfo.ua}`, `Cookie: ${String(document.cookie)}`],
+                'user-agent': panInfo.ua,
+                'referer': `${location.origin}/`
+            }, {});
         },
         getSelectedList() {
             try {
@@ -4070,26 +4041,7 @@
         async sendLinkToRPC(filename, link) {
             let rpc = base._rpcConfig();
             if (!rpc) return 'fail';
-            let url = rpc.url;
-            let rpcData = {
-                id: new Date().getTime(),
-                jsonrpc: '2.0',
-                method: 'aria2.addUri',
-                params: [`token:${rpc.token}`, [link], {
-                    dir: rpc.dir,
-                    out: base.safeRpcFilename(filename),
-                    header: []
-                }]
-            };
-            try {
-                let res = await base.post(url, rpcData, {}, '');
-                if (res.result) return 'success';
-                base.panelNotice('Aria2 拒绝请求：' + ((res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
-                return 'fail';
-            } catch (e) {
-                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
-                return 'fail';
-            }
+            return base._rpcAddUri(rpc, filename, link, { header: [] }, {});
         },
         getSelectedList() {
             let normalize = (item, vue) => {
@@ -4706,26 +4658,7 @@
         async sendLinkToRPC(filename, link) {
             let rpc = base._rpcConfig();
             if (!rpc) return 'fail';
-            let url = rpc.url;
-            let rpcData = {
-                id: new Date().getTime(),
-                jsonrpc: '2.0',
-                method: 'aria2.addUri',
-                params: [`token:${rpc.token}`, [link], {
-                    dir: rpc.dir,
-                    out: base.safeRpcFilename(filename),
-                    header: []
-                }]
-            };
-            try {
-                let res = await base.post(url, rpcData, {}, '');
-                if (res.result) return 'success';
-                base.panelNotice('Aria2 拒绝请求：' + ((res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
-                return 'fail';
-            } catch (e) {
-                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
-                return 'fail';
-            }
+            return base._rpcAddUri(rpc, filename, link, { header: [] }, {});
         },
         detectPage() {
             let m = /^\/(f|d)\//.exec(location.pathname);
