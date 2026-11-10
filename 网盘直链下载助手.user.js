@@ -2985,7 +2985,7 @@
             if (!rpc) return 'fail';
             let BDUSS = this.getBDUSS();
             return base._rpcAddUri(rpc, filename, link, {
-                header: [`User-Agent: ${panInfo.ua}`, ...(BDUSS ? [`Cookie: ***`] : [])],
+                header: [`User-Agent: ${panInfo.ua}`, ...(BDUSS ? [`Cookie: BDUSS=${BDUSS}`] : [])],
             }, { "User-Agent": panInfo.ua });
         },
         getSelectedList() {
