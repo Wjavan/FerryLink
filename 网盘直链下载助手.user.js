@@ -492,7 +492,7 @@
                 return null;
             }
             const dir = base.rpcDir(rpc.dir);
-            rpc.dir = dir.dir;   // 空或非法就不发这个键，下载器会用自己的默认目录
+            rpc.dir = dir.dir;
             if (dir.err) base._rpcDirNote = dir.err;
             rpc.url = `${rpc.domain}:${rpc.port}${rpc.path}`;
             return rpc;
@@ -508,12 +508,12 @@
             if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(s)) s = '_' + s;   // 设备名不能直接做文件名
             const m = /^(.*?)(\.[A-Za-z0-9_]{1,16})$/.exec(s);
             let stem = m ? m[1] : s, ext = m ? m[2] : '';
-            // 全路径要留在 260 以内，aria2 还会多写一个 .aria2 控制文件
+            // 给全路径与 .aria2 留余量
             let cps = Array.from(stem);
             while (cps.length > 1 && (cps.length + ext.length > 100 || new TextEncoder().encode(cps.join('') + ext).length > 200)) cps.pop();
             return cps.join('') + ext;
         },
-        // 只认绝对路径；裸盘符在 Windows 下不是目录，aria2 会拼成 C:/文件名
+        // 裸盘符不是目录，aria2 会拼成 C:/文件名
         rpcDir(dir) {
             const s = String(dir == null ? '' : dir).trim().replace(/^["']+|["']+$/g, '').replace(/：/g, ':').trim();
             if (!s) return { dir: undefined, err: '' };
