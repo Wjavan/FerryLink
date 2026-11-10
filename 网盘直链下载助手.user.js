@@ -491,13 +491,9 @@
                 base.panelNotice('RPC ' + partErr, 'error');
                 return null;
             }
-            rpc.dir = base.normalizeRpcDir(rpc.dir);
-            if (rpc.dir) {
-                const dirErr = base.rpcDirProblem(rpc.dir);
-                if (dirErr) { base.warnRpcDir(rpc.dir); rpc.dir = undefined; }
-            } else {
-                rpc.dir = undefined;   // 不发这个键，下载器才会用自己的默认目录
-            }
+            const dir = base.rpcDir(rpc.dir);
+            rpc.dir = dir.dir;   // 空或非法就不发这个键，下载器会用自己的默认目录
+            if (dir.err) base._rpcDirNote = dir.err;
             rpc.url = `${rpc.domain}:${rpc.port}${rpc.path}`;
             return rpc;
         },
@@ -517,31 +513,12 @@
             while (cps.length > 1 && (cps.length + ext.length > 100 || new TextEncoder().encode(cps.join('') + ext).length > 200)) cps.pop();
             return cps.join('') + ext;
         },
-        // 资源管理器「复制路径」带引号，中文输入法的冒号是全角
-        normalizeRpcDir(dir) {
-            return String(dir == null ? '' : dir)
-                .trim()
-                .replace(/^["']+|["']+$/g, '')
-                .replace(/：/g, ':')
-                .trim();
-        },
-        // 只收绝对路径；裸盘符在 Windows 下不是目录，aria2 会拼成 C:/文件名
-        rpcDirProblem(dir) {
-            const s = String(dir == null ? '' : dir)
-                .trim()
-                .replace(/^["']+|["']+$/g, '')
-                .replace(/：/g, ':')
-                .trim();
-            if (!s) return '';
-            if (/^[A-Za-z]:$/.test(s)) return '保存路径「' + s + '」只有盘符，本次改用下载器默认目录；请填完整路径';
-            if (!/^(?:[A-Za-z]:[\\/]|\\\\|\/)/.test(s)) return '保存路径「' + s + '」不是绝对路径，本次改用下载器默认目录；请填完整路径';
-            return '';
-        },
-        // 批量时每个文件都会过一次，同一个值只提醒一次
-        warnRpcDir(dir) {
-            if (base._rpcDirWarned === dir) return;
-            base._rpcDirWarned = dir;
-            base.panelNotice(base.rpcDirProblem(dir), 'warning', 6000);
+        // 只认绝对路径；裸盘符在 Windows 下不是目录，aria2 会拼成 C:/文件名
+        rpcDir(dir) {
+            const s = String(dir == null ? '' : dir).trim().replace(/^["']+|["']+$/g, '').replace(/：/g, ':').trim();
+            if (!s) return { dir: undefined, err: '' };
+            if (!/^(?:[A-Za-z]:[\\/]|\\\\|\/)/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是完整路径，本次改用下载器默认目录' };
+            return { dir: s, err: '' };
         },
         getRandomString(len) {
             len = len || 16;
@@ -1827,6 +1804,7 @@
                 const d = base.getValue('setting_rpc_domain'), p = base.getValue('setting_rpc_port'), pa = base.getValue('setting_rpc_path');
                 if (!d || !p || !pa) { base.showRPCSetting(false); return; }
                 $btn.text('正在推送 ' + files.length + ' 个任务至 RPC…').prop('disabled', true);
+                base._rpcDirNote = '';
                 let ok = 0, fail = 0;
                 for (let f of files) {
                     const $cell = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
@@ -1836,7 +1814,7 @@
                     else { fail++; $cell.html(MARK_NO); base._markFailWithReason($cell, base._lastNotice); }
                 }
                 $btn.text('推送完成：成功 ' + ok + '，失败 ' + fail);
-                if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明', 'error'); else if (ok > 0) base.panelNotice('已提交 ' + ok + ' 个任务给 Aria2，进度请看下载器', 'success');
+                if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明', 'error'); else if (ok > 0) base.panelNotice('已提交 ' + ok + ' 个任务给 Aria2，进度请看下载器' + (base._rpcDirNote ? '；' + base._rpcDirNote : ''), base._rpcDirNote ? 'warning' : 'success');
                 setTimeout(() => base._updateMainButton(), 4000);
             } else if (pid === 'bc-rpc') {
                 // 先探远程，通就静默推送，不通调本地 BC
