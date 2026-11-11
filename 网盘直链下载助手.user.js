@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              FerryLink
 // @namespace         https://github.com/Wjavan/FerryLink
-// @version           1.6.3
+// @version           1.6.4
 // @author            Wjavan
 // @description       支持百度/阿里/天翼/迅雷/夸克/移动/城通网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/NDM/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
 // @copyright         2026, Wjavan (https://github.com/Wjavan)
@@ -491,16 +491,39 @@
                 base.panelNotice('RPC ' + partErr, 'error');
                 return null;
             }
+            const dir = base.rpcDir(rpc.dir);
+            rpc.dir = dir.dir;
             rpc.url = `${rpc.domain}:${rpc.port}${rpc.path}`;
             return rpc;
         },
         safeRpcFilename(name) {
-            return String(name || '')
+            let s = String(name || '')
                 .replace(/[\x00-\x1F\x7F]/g, '')
-                .replace(/[/\\]/g, '_')
+                .replace(/[/\\:*?"<>|]/g, '_')
                 .replace(/\.\./g, '_')
-                .replace(/^\.+/, '_')
-                .slice(0, 255);
+                .replace(/^\.+/, '_');
+            if (!s.trim()) return '';   // 交回 aria2 用链接的文件名，写死会撞名
+            if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])[. ]*$/i.test(s)) s = '_' + s;   // 裸设备名会吞文件
+            const m = /^(.*?)(\.[^\\/]{1,16})$/.exec(s);
+            let stem = m ? m[1] : s, ext = m ? m[2] : '';
+            // 按字节：ext4/APFS 限 255 字节，控制文件占 12
+            const enc = new TextEncoder();
+            let cps = Array.from(stem), bytes = enc.encode(stem + ext).length;
+            while (cps.length > 1 && bytes > 243) bytes -= enc.encode(cps.pop()).length;
+            return cps.join('') + ext;
+        },
+        rpcDir(dir) {
+            let s = String(dir == null ? '' : dir).trim();
+            if (/^".*"$/.test(s) || /^'.*'$/.test(s)) s = s.slice(1, -1);
+            s = s.replace(/^([A-Za-z])：/, '$1:').trim();
+            if (!s) return { dir: undefined, err: '' };
+            if (/[\x00-\x1F\x7F]/.test(s)) return { dir: undefined, err: '保存路径含不可见字符，本次改用下载器默认目录' };
+            if (!/^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]|\/)/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是完整路径，本次改用下载器默认目录；请填到具体目录，如 C:\\Downloads' };
+            if (!/[^\\/]/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是有效的保存目录，本次改用下载器默认目录' };
+            const b = s.startsWith('\\\\?\\') || s.startsWith('\\\\.\\') ? s.slice(4) : s;
+            if (b !== s && !/^(?:[A-Za-z]:[\\/]|\\\\)/.test(b)) return { dir: undefined, err: '保存路径「' + s + '」这种长路径写法不受支持，本次改用下载器默认目录' };
+            if (/^(?:[A-Za-z]:|\\)/.test(b) && /[<>"|?*:]/.test(/^[A-Za-z]:/.test(b) ? b.slice(2) : b)) return { dir: undefined, err: '保存路径含文件名不允许的字符，本次改用下载器默认目录' };
+            return { dir: s, err: '' };
         },
         getRandomString(len) {
             len = len || 16;
@@ -689,7 +712,7 @@
             }
             return compFiber.stateNode || compFiber;
         },
-        rpcDefaults: { domain: 'http://localhost', port: '16800', path: '/jsonrpc', token: '', dir: 'C:' },
+        rpcDefaults: { domain: 'http://localhost', port: '16800', path: '/jsonrpc', token: '', dir: '' },
         bcDefaults: { domain: 'http://localhost', port: '8080', path: '/panel/task_add_httpftp_result', user: '', pass: '', dir: '' },
         initDefaultConfig() {
             let value = [
@@ -708,6 +731,7 @@
             value.forEach((v) => {
                 base.getValue(v.name) === undefined && base.setValue(v.name, v.value);
             });
+            if (base.getValue('setting_rpc_dir') === 'C:') base.setValue('setting_rpc_dir', '');   // 清掉旧默认值
             Object.keys(SETTING_CHOICES).forEach((k) => {
                 base.getValue(k) === undefined && base.setValue(k, base.settingChoiceDefault(k));
             });
@@ -781,7 +805,7 @@
                 <label class="fl-setting-label"><div class="fl-label">RPC端口</div><input type="text" placeholder="端口号，例如：Motrix为16800" class="fl-input listener-port" value="${base.esc(base.getValue('setting_rpc_port'))}"></label>
                 <label class="fl-setting-label"><div class="fl-label">RPC路径</div><input type="text" placeholder="路径，默认为/jsonrpc" class="fl-input listener-path" value="${base.esc(base.getValue('setting_rpc_path'))}"></label>
                 <label class="fl-setting-label"><div class="fl-label">RPC密钥</div><input type="password" autocomplete="off" placeholder="无密钥无需填写" class="fl-input listener-token" value="${base.esc(base.getValue('setting_rpc_token'))}"></label>
-                <label class="fl-setting-label"><div class="fl-label">保存路径</div><input type="text" placeholder="留空则使用 aria2 默认下载目录；Windows 示例：C:\\Downloads" class="fl-input listener-dir" value="${base.esc(base.getValue('setting_rpc_dir'))}"></label>
+                <label class="fl-setting-label"><div class="fl-label">保存路径</div><input type="text" placeholder="留空则使用下载器默认目录；Windows 请填完整路径，如 C:\\Downloads" class="fl-input listener-dir" value="${base.esc(base.getValue('setting_rpc_dir'))}"></label>
                 <div class="fl-setting-actions"><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-reset-rpc">恢复默认</button><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-test-rpc">测试连接</button></div>
             </div>`;
             Swal.fire({
@@ -1786,6 +1810,7 @@
                 const d = base.getValue('setting_rpc_domain'), p = base.getValue('setting_rpc_port'), pa = base.getValue('setting_rpc_path');
                 if (!d || !p || !pa) { base.showRPCSetting(false); return; }
                 $btn.text('正在推送 ' + files.length + ' 个任务至 RPC…').prop('disabled', true);
+                const dirErr = base.rpcDir(base.getValue('setting_rpc_dir')).err;
                 let ok = 0, fail = 0;
                 for (let f of files) {
                     const $cell = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
@@ -1795,7 +1820,9 @@
                     else { fail++; $cell.html(MARK_NO); base._markFailWithReason($cell, base._lastNotice); }
                 }
                 $btn.text('推送完成：成功 ' + ok + '，失败 ' + fail);
-                if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明', 'error'); else if (ok > 0) base.panelNotice('已推送至 Aria2，下载已开始', 'success');
+                const dirNote = dirErr ? '；' + dirErr : '';
+                if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明' + dirNote, 'error');
+                else if (ok > 0) base.panelNotice('已推送 ' + ok + ' 个任务给 Aria2，进度请看下载器' + dirNote, dirErr ? undefined : 'success');
                 setTimeout(() => base._updateMainButton(), 4000);
             } else if (pid === 'bc-rpc') {
                 // 先探远程，通就静默推送，不通调本地 BC
