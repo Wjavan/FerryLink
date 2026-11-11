@@ -518,7 +518,7 @@
             s = s.replace(/^([A-Za-z])：/, '$1:').trim();
             if (!s) return { dir: undefined, err: '' };
             if (/[\x00-\x1F\x7F]/.test(s)) return { dir: undefined, err: '保存路径含不可见字符，本次改用下载器默认目录' };
-            if (!/^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]|\/)/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是完整路径，本次改用下载器默认目录；请填完整路径' };
+            if (!/^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]|\/)/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是完整路径，本次改用下载器默认目录；请填到具体目录，如 C:\\Downloads' };
             if (!/[^\\/]/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是有效的保存目录，本次改用下载器默认目录' };
             const b = s.startsWith('\\\\?\\') || s.startsWith('\\\\.\\') ? s.slice(4) : s;
             if (b !== s && !/^(?:[A-Za-z]:[\\/]|\\\\)/.test(b)) return { dir: undefined, err: '保存路径「' + s + '」这种长路径写法不受支持，本次改用下载器默认目录' };
@@ -1821,7 +1821,7 @@
                 $btn.text('推送完成：成功 ' + ok + '，失败 ' + fail);
                 const dirNote = dirErr ? '；' + dirErr : '';
                 if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明' + dirNote, 'error');
-                else if (ok > 0) base.panelNotice('已提交 ' + ok + ' 个任务给 Aria2，进度请看下载器' + dirNote, dirErr ? 'warning' : 'success');
+                else if (ok > 0) base.panelNotice('已提交 ' + ok + ' 个任务给 Aria2，进度请看下载器' + dirNote, dirErr ? undefined : 'success');
                 setTimeout(() => base._updateMainButton(), 4000);
             } else if (pid === 'bc-rpc') {
                 // 先探远程，通就静默推送，不通调本地 BC
