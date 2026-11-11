@@ -518,7 +518,9 @@
             if (/[\x00-\x1F\x7F]/.test(s)) return { dir: undefined, err: '保存路径含不可见字符，本次改用下载器默认目录' };
             if (!/^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/]|\/)/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是完整路径，本次改用下载器默认目录；请填完整路径' };
             if (!/[^\\/]/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是有效的保存目录，本次改用下载器默认目录' };
-            if (/^(?:[A-Za-z]:|\\)/.test(s) && /[<>"|?*:]/.test(s.replace(/^\\\\[?.]\\/, '').slice(2))) return { dir: undefined, err: '保存路径含文件名不允许的字符，本次改用下载器默认目录' };
+            const b = s.startsWith('\\\\?\\') || s.startsWith('\\\\.\\') ? s.slice(4) : s;
+            if (b !== s && !/^(?:[A-Za-z]:[\\/]|\\\\)/.test(b)) return { dir: undefined, err: '保存路径「' + s + '」不是完整路径，本次改用下载器默认目录；请填完整路径' };
+            if (/^(?:[A-Za-z]:|\\)/.test(b) && /[<>"|?*:]/.test(/^[A-Za-z]:/.test(b) ? b.slice(2) : b)) return { dir: undefined, err: '保存路径含文件名不允许的字符，本次改用下载器默认目录' };
             return { dir: s, err: '' };
         },
         getRandomString(len) {
