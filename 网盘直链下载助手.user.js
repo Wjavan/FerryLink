@@ -506,13 +506,12 @@
             if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])[. ]*$/i.test(s)) s = '_' + s;   // 裸设备名会吞文件
             const m = /^(.*?)(\.[A-Za-z0-9_]{1,16})$/.exec(s);
             let stem = m ? m[1] : s, ext = m ? m[2] : '';
-            // 255 字节上限，<out>.aria2__temp 另占 12 字节
+            // 255 上限，控制文件另占 12
             const enc = new TextEncoder();
             let cps = Array.from(stem), bytes = enc.encode(stem + ext).length;
             while (cps.length > 1 && bytes > 243) bytes -= enc.encode(cps.pop()).length;
             return cps.join('') + ext;
         },
-        // 裸盘符不是目录，aria2 会拼成 C:/文件名
         rpcDir(dir) {
             const s = String(dir == null ? '' : dir).trim().replace(/^["']+|["']+$/g, '').replace(/^([A-Za-z])：/, '$1:').trim();
             if (!s) return { dir: undefined, err: '' };
