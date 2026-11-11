@@ -493,7 +493,6 @@
             }
             const dir = base.rpcDir(rpc.dir);
             rpc.dir = dir.dir;
-            if (dir.err) base._rpcDirNote = dir.err;
             rpc.url = `${rpc.domain}:${rpc.port}${rpc.path}`;
             return rpc;
         },
@@ -507,11 +506,11 @@
             if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])[. ]*$/i.test(s)) s = '_' + s;   // 裸设备名会吞文件
             const m = /^(.*?)(\.[A-Za-z0-9_]{1,16})$/.exec(s);
             let stem = m ? m[1] : s, ext = m ? m[2] : '';
-            // 255 字节上限，<out>.aria2__temp 还占 12 个
+            // 255 字节上限，<out>.aria2__temp 另占 12 字节
             const enc = new TextEncoder();
             let cps = Array.from(stem), bytes = enc.encode(stem + ext).length;
             while (cps.length > 1 && bytes > 243) bytes -= enc.encode(cps.pop()).length;
-            return cps.join('') + ext || 'download';
+            return cps.join('') + ext;
         },
         // 裸盘符不是目录，aria2 会拼成 C:/文件名
         rpcDir(dir) {
@@ -1805,7 +1804,7 @@
                 const d = base.getValue('setting_rpc_domain'), p = base.getValue('setting_rpc_port'), pa = base.getValue('setting_rpc_path');
                 if (!d || !p || !pa) { base.showRPCSetting(false); return; }
                 $btn.text('正在推送 ' + files.length + ' 个任务至 RPC…').prop('disabled', true);
-                base._rpcDirNote = '';
+                const dirErr = base.rpcDir(base.getValue('setting_rpc_dir')).err;
                 let ok = 0, fail = 0;
                 for (let f of files) {
                     const $cell = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
@@ -1815,7 +1814,7 @@
                     else { fail++; $cell.html(MARK_NO); base._markFailWithReason($cell, base._lastNotice); }
                 }
                 $btn.text('推送完成：成功 ' + ok + '，失败 ' + fail);
-                const dirNote = base._rpcDirNote ? '；' + base._rpcDirNote : '';
+                const dirNote = dirErr ? '；' + dirErr : '';
                 if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明' + dirNote, 'error');
                 else if (ok > 0) base.panelNotice('已提交 ' + ok + ' 个任务给 Aria2，进度请看下载器' + dirNote, 'success');
                 setTimeout(() => base._updateMainButton(), 4000);
