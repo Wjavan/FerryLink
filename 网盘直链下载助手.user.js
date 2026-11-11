@@ -498,17 +498,18 @@
             return rpc;
         },
         safeRpcFilename(name) {
-            // 字符集归网盘管，这里只挡路径分隔符与长度
             let s = String(name || '')
                 .replace(/[\x00-\x1F\x7F]/g, '')
-                .replace(/[/\\]/g, '_')
+                .replace(/[/\\:*?"<>|]/g, '_')
                 .replace(/\.\./g, '_')
                 .replace(/^\.+/, '_');
+            if (!s) return 'download';
+            if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(s)) s = '_' + s;   // 裸设备名会吞文件
             const m = /^(.*?)(\.[A-Za-z0-9_]{1,16})$/.exec(s);
             let stem = m ? m[1] : s, ext = m ? m[2] : '';
-            // 上限 255，留 6 个给 .aria2 控制文件
+            // aria2 还要写 <out>.aria2__temp，留 12 个
             let cps = Array.from(stem), len = stem.length;
-            while (cps.length > 1 && len + ext.length > 249) len -= cps.pop().length;
+            while (cps.length > 1 && len + ext.length > 243) len -= cps.pop().length;
             return cps.join('') + ext || 'download';
         },
         // 裸盘符不是目录，aria2 会拼成 C:/文件名
