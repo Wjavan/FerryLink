@@ -731,6 +731,7 @@
             value.forEach((v) => {
                 base.getValue(v.name) === undefined && base.setValue(v.name, v.value);
             });
+            if (base.getValue('setting_rpc_dir') === 'C:') base.setValue('setting_rpc_dir', '');   // 清掉旧默认值
             Object.keys(SETTING_CHOICES).forEach((k) => {
                 base.getValue(k) === undefined && base.setValue(k, base.settingChoiceDefault(k));
             });
@@ -1821,7 +1822,7 @@
                 $btn.text('推送完成：成功 ' + ok + '，失败 ' + fail);
                 const dirNote = dirErr ? '；' + dirErr : '';
                 if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明' + dirNote, 'error');
-                else if (ok > 0) base.panelNotice('已提交 ' + ok + ' 个任务给 Aria2，进度请看下载器' + dirNote, dirErr ? undefined : 'success');
+                else if (ok > 0) base.panelNotice('已推送 ' + ok + ' 个任务给 Aria2，进度请看下载器' + dirNote, dirErr ? undefined : 'success');
                 setTimeout(() => base._updateMainButton(), 4000);
             } else if (pid === 'bc-rpc') {
                 // 先探远程，通就静默推送，不通调本地 BC
