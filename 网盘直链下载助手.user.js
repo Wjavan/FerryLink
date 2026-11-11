@@ -504,12 +504,13 @@
                 .replace(/\.\./g, '_')
                 .replace(/^\.+/, '_');
             if (!s) return 'download';
-            if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(s)) s = '_' + s;   // 裸设备名会吞文件
+            if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])[. ]*$/i.test(s)) s = '_' + s;   // 裸设备名会吞文件
             const m = /^(.*?)(\.[A-Za-z0-9_]{1,16})$/.exec(s);
             let stem = m ? m[1] : s, ext = m ? m[2] : '';
-            // aria2 还要写 <out>.aria2__temp，留 12 个
-            let cps = Array.from(stem), len = stem.length;
-            while (cps.length > 1 && len + ext.length > 243) len -= cps.pop().length;
+            // 255 字节上限，<out>.aria2__temp 还占 12 个
+            const enc = new TextEncoder();
+            let cps = Array.from(stem), bytes = enc.encode(stem + ext).length;
+            while (cps.length > 1 && bytes > 243) bytes -= enc.encode(cps.pop()).length;
             return cps.join('') + ext || 'download';
         },
         // 裸盘符不是目录，aria2 会拼成 C:/文件名
@@ -799,7 +800,7 @@
                 <label class="fl-setting-label"><div class="fl-label">RPC端口</div><input type="text" placeholder="端口号，例如：Motrix为16800" class="fl-input listener-port" value="${base.esc(base.getValue('setting_rpc_port'))}"></label>
                 <label class="fl-setting-label"><div class="fl-label">RPC路径</div><input type="text" placeholder="路径，默认为/jsonrpc" class="fl-input listener-path" value="${base.esc(base.getValue('setting_rpc_path'))}"></label>
                 <label class="fl-setting-label"><div class="fl-label">RPC密钥</div><input type="password" autocomplete="off" placeholder="无密钥无需填写" class="fl-input listener-token" value="${base.esc(base.getValue('setting_rpc_token'))}"></label>
-                <label class="fl-setting-label"><div class="fl-label">保存路径</div><input type="text" placeholder="留空则使用下载器默认目录；Windows 请填完整路径，如 C:\\Downloads（目录需已存在）" class="fl-input listener-dir" value="${base.esc(base.getValue('setting_rpc_dir'))}"></label>
+                <label class="fl-setting-label"><div class="fl-label">保存路径</div><input type="text" placeholder="留空则使用下载器默认目录；Windows 请填完整路径，如 C:\\Downloads" class="fl-input listener-dir" value="${base.esc(base.getValue('setting_rpc_dir'))}"></label>
                 <div class="fl-setting-actions"><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-reset-rpc">恢复默认</button><button type="button" class="fl-dl-btn fl-dl-btn-secondary listener-test-rpc">测试连接</button></div>
             </div>`;
             Swal.fire({
