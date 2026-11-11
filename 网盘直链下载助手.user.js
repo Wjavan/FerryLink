@@ -506,7 +506,7 @@
             if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])[. ]*$/i.test(s)) s = '_' + s;   // 裸设备名会吞文件
             const m = /^(.*?)(\.[A-Za-z0-9_]{1,16})$/.exec(s);
             let stem = m ? m[1] : s, ext = m ? m[2] : '';
-            // 255 上限，控制文件另占 12
+            // 按字节：ext4/APFS 限 255 字节，控制文件占 12
             const enc = new TextEncoder();
             let cps = Array.from(stem), bytes = enc.encode(stem + ext).length;
             while (cps.length > 1 && bytes > 243) bytes -= enc.encode(cps.pop()).length;
@@ -517,6 +517,8 @@
             if (!s) return { dir: undefined, err: '' };
             if (/[\x00-\x1F\x7F]/.test(s)) return { dir: undefined, err: '保存路径含不可见字符，本次改用下载器默认目录' };
             if (!/^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/]|\/)/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是完整路径，本次改用下载器默认目录；请填完整路径' };
+            if (!/[^\\/]/.test(s)) return { dir: undefined, err: '保存路径「' + s + '」不是目录，本次改用下载器默认目录' };
+            if (/^(?:[A-Za-z]:|\\\\(?!\?\\))/.test(s) && /[<>"|?*]/.test(s.slice(2))) return { dir: undefined, err: '保存路径含文件名不允许的字符，本次改用下载器默认目录' };
             return { dir: s, err: '' };
         },
         getRandomString(len) {
