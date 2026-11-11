@@ -502,7 +502,7 @@
                 .replace(/[/\\:*?"<>|]/g, '_')
                 .replace(/\.\./g, '_')
                 .replace(/^\.+/, '_');
-            if (!s.trim()) return 'download';
+            if (!s.trim()) return '';   // 交回 aria2 用链接的文件名，写死会撞名
             if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])[. ]*$/i.test(s)) s = '_' + s;   // 裸设备名会吞文件
             const m = /^(.*?)(\.[^\\/]{1,16})$/.exec(s);
             let stem = m ? m[1] : s, ext = m ? m[2] : '';
