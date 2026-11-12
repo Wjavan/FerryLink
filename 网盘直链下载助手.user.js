@@ -4275,7 +4275,6 @@
                 '--fl-fs': cs.fontSize,
                 '--fl-fw': cs.fontWeight,
             });
-            // 上传组在手机档只剩一个按钮，仍插到组外
             let group = up.closest('.ct-btn-split');
             let anchor = group;
             if (!anchor) {
@@ -4286,7 +4285,6 @@
             if (!anchor) return false;
             $btn.css('margin-right', '0px');
             anchor.before($btn[0]);
-            // 手机档组左边距为 0，按站点间距补
             let gap = anchor.getBoundingClientRect().left - $btn[0].getBoundingClientRect().right;
             if (gap < 2) {
                 let ref = anchor.nextElementSibling;
