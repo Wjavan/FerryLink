@@ -83,7 +83,6 @@
     const driveHdrs = {};          // 城通给的下载地址常配一组头，按 URL 存
     const BTN_ICON = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 3v9"></path><path d="M5 8l4 4 4-4"></path><path d="M3 12v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3"></path></svg>';
     const ROW_BUTTON = '<div class="ctfile-button ctfile-button-peer fl-button" title="下载助手">' + BTN_ICON + '下载助手</div>';
-    const clampGap = (v) => Math.max(-40, Math.min(40, Math.round(v)));
     const driveTrace = { url: '', body: '' };
     if (/drive\.ctfile\.com/.test(location.host)) {
         const pageWin = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
@@ -2225,17 +2224,19 @@
             .ali-button { display: inline-flex; align-items: center; justify-content: center; border: 0 solid transparent; border-radius: 5px; white-space: nowrap; flex-shrink: 0; font-size: 14px; line-height: 1.5; outline: 0; touch-action: manipulation; transition: background .3s ease; color: #fff; background: #637dff; margin-left: 20px; padding: 0 12px; position: relative; cursor: pointer; height: 32px; min-height: 32px; }
             .ali-button:hover { background: #7a90ff; }
             .ali-button:focus-visible { outline: 2px solid #637dff; outline-offset: 2px; }
-            .xunlei-button { display: inline-flex; align-items: center; justify-content: center; border: 0 solid transparent; border-radius: 5px; white-space: nowrap; flex-shrink: 0; font-size: 14px; line-height: 1.5; outline: 0; touch-action: manipulation; transition: background .3s ease; color: #fff; background: #3f85ff; margin-left: 12px; padding: 0 12px; position: relative; cursor: pointer; height: 36px; min-height: 32px; }
+            .xunlei-button { display: inline-flex; align-items: center; justify-content: center; border: 0 solid transparent; border-radius: 4px; white-space: nowrap; flex-shrink: 0; font-size: 14px; line-height: 1.5; outline: 0; touch-action: manipulation; transition: background .3s ease; color: #fff; background: #3f85ff; margin-left: 12px; padding: 0 12px; position: relative; cursor: pointer; height: 36px; min-height: 32px; }
+            .xunlei-button i { line-height: 36px; padding-left: 2px; }
             .xunlei-button:hover { background: #619bff; }
             .xunlei-button:focus-visible { outline: 2px solid #3f85ff; outline-offset: 2px; }
-            .tianyi-button { display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; padding: 4px 12px; border-radius: 4px; color: #fff; font-size: 12px; border: 1px solid #0073e3; background: #2b89ea; cursor: pointer; position: relative; min-height: 32px; transition: background .3s ease; width: auto; white-space: nowrap; text-align: center; }
+            .tianyi-button { display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; padding: 0 12px; border-radius: 2px; color: #fff; font-size: 12px; border: 1px solid #0073e3; background: #2b89ea; cursor: pointer; position: relative; min-height: 30px; line-height: 28px; transition: background .3s ease; width: auto; white-space: nowrap; text-align: center; }
             .tianyi-button:hover { border-color: #1874d3; background: #3699ff; }
             .tianyi-button:focus-visible { outline: 2px solid #2b89ea; outline-offset: 2px; }
             .yidong-button { float: left; position: relative; display: flex; align-items: center; justify-content: center; gap: 4px; margin: 20px 24px 20px 0; width: 98px; height: 36px; background: #3181f9; border-radius: 2px; font-size: 14px; color: #fff; line-height: 1; text-align: center; cursor: pointer; min-height: 32px; transition: background .3s ease; }
             .yidong-button svg { width: 20px; height: 20px; flex: 0 0 auto; }
             .yidong-button:hover { background: #2d76e5; }
             .yidong-button:focus-visible { outline: 2px solid #3181f9; outline-offset: 2px; }
-            .quark-button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #0d53ff; border-radius: 8px; white-space: nowrap; flex-shrink: 0; font-size: 12px; font-weight: 600; line-height: 1.5; outline: 0; color: #fff; background: #0d53ff; margin-right: 10px; padding: 0 10px; position: relative; cursor: pointer; height: 36px; min-height: 32px; transition: background .3s ease; }
+            .quark-button { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; white-space: nowrap; flex-shrink: 0; font-size: 12px; font-weight: 600; line-height: 1.5; outline: 0; color: #fff; background: #0d53ff; margin-right: 16px; padding: 0 10px; position: relative; cursor: pointer; height: 36px; min-height: 32px; transition: background .3s ease; }
+            .quark-button svg { width: 20px; height: 20px; margin-right: 0; flex: 0 0 auto; }
             .quark-button:hover { background: #3a72ff; border-color: #3a72ff; }
             .quark-button:focus-visible { outline: 2px solid #3f85ff; outline-offset: 2px; }
             .ctfile-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; margin: 6px; height: 48px; padding: 0 24px; border: 1px solid #1677ff; border-radius: 8px; background: #1677ff; color: #fff; font-family: inherit; font-size: 16px; font-weight: 700; line-height: 1; white-space: nowrap; flex-shrink: 0; cursor: pointer; transition: background-color .15s, border-color .15s, box-shadow .15s; }
@@ -2250,7 +2251,7 @@
             .ctfile-button-sm { height: 30px; padding: 0 14px; gap: 6px; font-size: 14px; font-weight: 600; }
             .ctfile-button-sm svg { width: 16px; height: 16px; }
             /* 跟「上传/上传文件夹」同款：色值、高度、圆角挂载时从旁边按钮读回来（--fl-*） */
-            .ctfile-button-peer { margin: 0; height: var(--fl-h, 32px); padding: 0 14px; gap: 6px; border: 1px solid var(--fl-bd, #1677ff); border-radius: var(--fl-r, 8px); background: var(--fl-bg, #1677ff); color: var(--fl-fg, #fff); font-size: var(--fl-fs, 14px); font-weight: var(--fl-fw, 600); }
+            .ctfile-button-peer { margin: 0; height: var(--fl-h, 32px); padding: 0 16px; gap: 8px; border: 1px solid var(--fl-bd, #1677ff); border-radius: var(--fl-r, 8px); background: var(--fl-bg, #1677ff); color: var(--fl-fg, #fff); font-size: var(--fl-fs, 14px); font-weight: var(--fl-fw, 600); }
             .ctfile-button-peer:hover { box-shadow: inset 0 0 0 999px rgba(255, 255, 255, .14); }
             .ctfile-button-peer:active { box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .12); }
             .ctfile-button-peer:focus-visible { outline: 2px solid var(--fl-bd, #1677ff); outline-offset: 2px; }
@@ -2529,7 +2530,7 @@
         },
         addButton() {
             const $button = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><div style="color:#fff;background: ${color};border-color:${color}" class="g-button g-button-blue"><span class="g-button-right"><em class="icon icon-download"></em><span class="text" style="width: 60px;">下载助手</span></span></div>`);
-            const $mainButton = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 8px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; padding: 8px 16px; border: none;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
+            const $mainButton = $(`<div class="fl-button" style="position: relative; display: inline-block; margin-right: 16px;"><button class="u-button u-button--primary u-button--small is-round is-has-icon" style="background: ${color};border-color: ${color};font-size: 14px; height: 32px; padding: 8px 16px; border: none; border-radius: 16px;"><i class="u-icon u-icon-download"></i><span>下载助手</span></button>`);
             const $shareButton = $(`<a class="fl-button fl-button-share" href="javascript:;" title="下载助手">${BTN_ICON}<span>下载助手</span></a>`);
             if (color) [['--fl-fg', color], ['--fl-bd', color], ['--fl-bg', color + '1f'], ['--fl-bg-h', color + '3d']].forEach((kv) => $shareButton[0].style.setProperty(kv[0], kv[1]));
             base.mountWithRetry(() => {
@@ -3492,7 +3493,7 @@
         addButton() {
             if (!pageNum) return;
             let $toolWrap;
-            let $button = $(`<div class="xunlei-button fl-button"><i class="xlpfont xlp-download"></i><span style="font-size: 13px;margin-left: 6px;">下载助手</span></div>`);
+            let $button = $(`<div class="xunlei-button fl-button"><i class="xlpfont xlp-download"></i><span style="font-size: 13px; margin-left: 0; line-height: 13px;">下载助手</span></div>`);
             if (pageNum === 'home') {
                 this._smartListen(() => {
                     let container = this._findHomeContainer();
@@ -3798,7 +3799,7 @@
             });
         },
         addButton() {
-            const $button = $(`<div class="quark-button fl-button"><svg width="22" height="22" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 2-2z"/><path d="M14 8h1.553c.85 0 1.16.093 1.47.267.311.174.556.43.722.756.166.326.255.65.255 1.54v4.873c0 .892-.089 1.215-.255 1.54-.166.327-.41.583-.722.757-.31.174-.62.267-1.47.267H6.447c-.85 0-1.16-.093-1.47-.267a1.778 1.778 0 01-.722-.756c-.166-.326-.255-.65-.255-1.54v-4.873c0-.892.089-1.215.255-1.54.166-.327.41-.583.722-.757.31-.174.62-.267 1.47-.267H11"/><path stroke-linecap="round" stroke-linejoin="round" d="M11 3v10"/></g></svg><span>下载助手</span></div>`);
+            const $button = $(`<div class="quark-button fl-button"><svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 2-2z"/><path d="M14 8h1.553c.85 0 1.16.093 1.47.267.311.174.556.43.722.756.166.326.255.65.255 1.54v4.873c0 .892-.089 1.215-.255 1.54-.166.327-.41.583-.722.757-.31.174-.62.267-1.47.267H6.447c-.85 0-1.16-.093-1.47-.267a1.778 1.778 0 01-.722-.756c-.166-.326-.255-.65-.255-1.54v-4.873c0-.892.089-1.215.255-1.54.166-.327.41-.583.722-.757.31-.174.62-.267 1.47-.267H11"/><path stroke-linecap="round" stroke-linejoin="round" d="M11 3v10"/></g></svg><span>下载助手</span></div>`);
             base.mountWithRetry(() => {
                 pageNum = this.detectPage();
                 let $toolWrap = $(panInfo.btn.home);
@@ -4274,41 +4275,24 @@
                 '--fl-fs': cs.fontSize,
                 '--fl-fw': cs.fontWeight,
             });
-            // 紧贴在一起的是连体组，插到组外
-            let sib = up.nextElementSibling;
-            let compact = !!sib && (sib.getBoundingClientRect().left - up.getBoundingClientRect().right) < 2;
-            let anchor = compact ? up.parentElement : up;
-            if (!anchor) return false;
-            // 往上找第一对有间隙的相邻控件
-            let target = 0, node = up;
-            for (let d = 0; d < 3 && node && !target; d++) {
-                node = node.parentElement;
-                if (!node) break;
-                let kids = [...node.children].filter(el => el.getBoundingClientRect().width > 0);
-                for (let i = 1; i < kids.length; i++) {
-                    let g = kids[i].getBoundingClientRect().left - kids[i - 1].getBoundingClientRect().right;
-                    if (g > 2 && g < 60) { target = Math.round(g); break; }
-                }
+            // 上传组在手机档只剩一个按钮，仍插到组外
+            let group = up.closest('.ct-btn-split');
+            let anchor = group;
+            if (!anchor) {
+                let sib = up.nextElementSibling;
+                let compact = !!sib && (sib.getBoundingClientRect().left - up.getBoundingClientRect().right) < 2;
+                anchor = compact ? up.parentElement : up;
             }
-            if (!target) target = 8;
-            // 组自带左边距，用负 margin 抵掉，不动城通元素
-            let ml = parseFloat(getComputedStyle(anchor).marginLeft) || 0;
-            $btn.css('margin-right', clampGap(target - ml) + 'px');
+            if (!anchor) return false;
+            $btn.css('margin-right', '0px');
             anchor.before($btn[0]);
-            // 字体和布局可能晚一步才定，多校几次，每次都往目标值上贴
-            let fix = () => {
-                if (!$btn[0].isConnected || !up.isConnected) return;
-                let cur = up.getBoundingClientRect().left - $btn[0].getBoundingClientRect().right;
-                if (Math.abs(target - cur) >= 0.5) {
-                    let mr = parseFloat(getComputedStyle($btn[0]).marginRight) || 0;
-                    $btn.css('margin-right', clampGap(mr + (target - cur)) + 'px');
-                    cur = up.getBoundingClientRect().left - $btn[0].getBoundingClientRect().right;
-                }
-            };
-            [0, 150, 400].forEach(t => {
-                if (!t && typeof requestAnimationFrame === 'function') requestAnimationFrame(fix);
-                else setTimeout(fix, t);
-            });
+            // 手机档组左边距为 0，按站点间距补
+            let gap = anchor.getBoundingClientRect().left - $btn[0].getBoundingClientRect().right;
+            if (gap < 2) {
+                let ref = anchor.nextElementSibling;
+                let ml = ref ? parseFloat(getComputedStyle(ref).marginLeft) || 0 : 0;
+                $btn.css('margin-right', (ml > 0 ? ml : 8) + 'px');
+            }
             return true;
         },
         _watchHash() {
