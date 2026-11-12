@@ -21,6 +21,9 @@ body:
     attributes:
       label: 页面地址
       description: 出问题的页面完整 URL。
+      placeholder: |
+        https://pan.baidu.com/s/xxxx
+        https://pan.quark.cn/s/yyyy
     validations:
       required: true
   - type: dropdown
