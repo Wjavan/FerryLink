@@ -1,0 +1,58 @@
+name: 功能建议
+description: 希望支持新的网盘、下载器，或改变现有行为
+title: '[Feature] '
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        只提 FerryLink 本身的功能需求，脚本报错、取链失败请走 [Bug 反馈](https://github.com/Wjavan/FerryLink/issues/new?template=bug_report.yml)。
+
+        提之前先看一眼：
+
+        - 新网盘 / 新下载器要有可用的直链接口或客户端接口，缺这一步，加了按钮也取不到链
+  - type: textarea
+    id: problem
+    attributes:
+      label: 使用场景
+      description: 你在做什么，现在卡在哪一步。
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: 期望的效果
+      description: 界面上多出什么，点下去发生什么。
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: 需求类型
+      options:
+        - 新增网盘
+        - 新增下载器
+        - 现有网盘取链改进
+        - 面板与交互
+        - 配置项
+        - 性能与稳定性
+        - 开发者体验（CI、文档）
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: 样本链接
+      description: 与这次需求相关的分享页或文件地址，能公开的才贴。
+      placeholder: |
+        https://pan.quark.cn/s/xxxx
+        https://pan.baidu.com/s/yyyy
+    validations:
+      required: false
+  - type: checkboxes
+    id: help
+    attributes:
+      label: 后续配合
+      options:
+        - label: 愿意自己动手实现并提 PR
