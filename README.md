@@ -179,8 +179,7 @@
 | 🐱 ScriptCat 安装页 | [scriptcat.org/zh-CN/script-show-page/8398](https://scriptcat.org/zh-CN/script-show-page/8398) |
 | 🌐 项目主页 | [github.com/Wjavan/FerryLink](https://github.com/Wjavan/FerryLink) |
 | 📜 更新日志 | [github.com/Wjavan/FerryLink/releases](https://github.com/Wjavan/FerryLink/releases) |
-| 🐛 提交 Issue | [github.com/Wjavan/FerryLink/issues](https://github.com/Wjavan/FerryLink/issues) |
-| 🍴 查看 Forks | [github.com/Wjavan/FerryLink/forks](https://github.com/Wjavan/FerryLink/forks) |
+| 💡 提交 Issue | [github.com/Wjavan/FerryLink/issues](https://github.com/Wjavan/FerryLink/issues) |
 
 ---
 
