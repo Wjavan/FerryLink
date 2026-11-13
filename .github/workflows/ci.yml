@@ -184,3 +184,6 @@ jobs:
           # 校验工具由镜像提供，缺失时直接失败而非跳过
           command -v shellcheck >/dev/null || { echo "::error::镜像里没有 shellcheck，workflow 检查不完整"; exit 1; }
           "$RUNNER_TEMP/actionlint"
+
+      - name: workflow 安全分析
+        run: pipx run zizmor==1.32.0 --format github .github/workflows

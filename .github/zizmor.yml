@@ -1,0 +1,6 @@
+# actions/* 用大版本标签，其余要求哈希。
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "actions/*": ref-pin
