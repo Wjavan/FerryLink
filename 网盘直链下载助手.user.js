@@ -4296,6 +4296,7 @@
         },
         _watchHash() {
             window.addEventListener('hashchange', () => {
+                driveTrace.body = '';
                 pageNum = this.detectPage();
                 if (pageNum === 'drive') {
                     if (!$('.ctfile-button.fl-button').length) this._mountDriveBtn();
@@ -4528,7 +4529,7 @@
             let root = await this._driveRoot(space);
             if (!root) console.warn('[FerryLink] ctfile 换不到根目录 id，退回 0：', space);
             let ws = space.id || space.workspace_id || space.space_id;
-            let folders = root ? [root] : [this._driveFolder(), 'd0', null];
+            let folders = [this._driveFolder()].filter(f => f !== '0').concat(root ? [root] : ['d0', null]);
             let plan = [this._driveReplay(root)];
             folders.forEach(f => {
                 plan.push({ orderby: 'new', folder_id: f });
