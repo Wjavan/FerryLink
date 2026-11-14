@@ -4256,7 +4256,7 @@
         _uploadBtn() {
             let $hit = $('button, a, [role="button"], [class*=btn]').filter(function () {
                 if (this.hidden || /none/i.test(String(this.style && this.style.display))) return false;
-                if ($(this).closest('[hidden], [aria-hidden="true"]').length) return false;
+                if ($(this).closest('[hidden], [aria-hidden="true"]:not(body > *)').length) return false;
                 if ($(this).find('button, a, [role="button"]').length) return false;
                 return /^(上传|上传文件|Upload)$/i.test($(this).text().replace(/\s+/g, ''));
             }).first();
