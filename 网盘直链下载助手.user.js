@@ -2299,6 +2299,7 @@
             .fl-color-box:hover { border-color: ${color}; }
             .fl-color-box.checked { border: 3px dashed #303133 !important }
             .fl-color-box:focus-visible { outline: 2px solid ${color}; outline-offset: 2px; }
+            .swal2-close { color: #8b8e93; }
             /* swal2 关闭按钮焦点轮廓：Tab 导航或弹窗打开时自动聚焦都会触发 */
             .swal2-close:focus, .swal2-close:focus-visible { outline: 0 !important; box-shadow: none !important; }
             .swal2-container { z-index: 200000 !important; }
