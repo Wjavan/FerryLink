@@ -112,7 +112,7 @@
         } catch (e) { }
     }
     let pageNum = '', selectedFiles = [], panInfo = {}, color = '',
-        doc = $(document), downloadProgress = {}, pendingRequests = {}, intervals = {};
+        doc = $(document);
 
     const MARK_OK = '<span class="fl-mark ok">✓</span>';
     const MARK_NO = '<span class="fl-mark no">✗</span>';
@@ -549,31 +549,17 @@
             let l = md5(a + ":" + n);
             return md5(A + l).toUpperCase();
         },
-        _resetData() {
-                    downloadProgress = {};
-                    $.each(pendingRequests, (key) => {
-                        (pendingRequests[key]).abort();
-                    });
-                    $.each(intervals, (key) => {
-                        clearInterval(intervals[key]);
-                    });
-                    intervals = {};
-                    pendingRequests = {};
-                },
         post(url, data, headers, type) {
                             if (this.isType(data) === 'object') {
                                 data = JSON.stringify(data);
                             }
                             return new Promise((resolve, reject) => {
-                                const key = 'post_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-                                const clear = () => { delete pendingRequests[key]; };
-                                pendingRequests[key] = GM_xmlhttpRequest({
+                                GM_xmlhttpRequest({
                                     method: "POST", url, headers, data,
                                     responseType: type || 'json',
                                     timeout: 30000,
-                                    ontimeout: () => { clear(); reject(new Error('请求超时（30s）')); },
+                                    ontimeout: () => { reject(new Error('请求超时（30s）')); },
                                     onload: (res) => {
-                                        clear();
                                         if (type === 'blob') { resolve(res); return; }
                                         if (res.status >= 400) {
                                             const body = res.response || res.responseText || '';
@@ -588,63 +574,44 @@
                                         resolve(res.response || res.responseText);
                                     },
                                     onerror: (err) => {
-                                        clear();
                                         reject(err);
                                     },
                                 });
                             });
                         },
-        get(url, headers, type, extra) {
+        get(url, headers, type) {
             headers = Object.assign({ 'Referer': location.origin }, headers);
             return new Promise((resolve, reject) => {
-                const key = 'get_' + (extra && extra.index != null ? extra.index : Date.now());
-                const clear = () => { delete pendingRequests[key]; };
-                let requestObj = GM_xmlhttpRequest({
+                GM_xmlhttpRequest({
                     method: "GET", url, headers,
                     responseType: type || 'json',
                     timeout: type === 'blob' ? 0 : 30000,
-                    ontimeout: () => { clear(); reject(new Error('请求超时（30s）')); },
+                    ontimeout: () => { reject(new Error('请求超时（30s）')); },
                     onload: (res) => {
-                        clear();
                         resolve(res.response || res.responseText);
                     },
-                    onprogress: (res) => {
-                        if (extra && extra.filename && extra.index != null) {
-                            res.total > 0 ? downloadProgress[extra.index] = Math.floor(res.loaded * 100 / res.total) : downloadProgress[extra.index] = 0;
-                        }
-                    },
-                    onloadstart() {
-                        if (extra && extra.filename && extra.index != null) {
-                            downloadProgress[extra.index] = 0;
-                        }
-                    },
                     onerror: (err) => {
-                        clear();
                         reject(err);
                     },
                 });
-                pendingRequests[key] = requestObj;
             });
         },
         getFinalUrl(url, headers) {
             headers = Object.assign({ 'Referer': location.origin }, headers);
             return new Promise((resolve, reject) => {
-                const key = 'finalurl_' + Date.now();
-                const done = (v) => { delete pendingRequests[key]; resolve(v); };
-                pendingRequests[key] = GM_xmlhttpRequest({
+                GM_xmlhttpRequest({
                     method: "HEAD", url, headers,
                     timeout: 10000,
-                    ontimeout: () => { delete pendingRequests[key]; reject(new Error('请求超时（10s）')); },
-                    onload: (res) => { done(res.finalUrl || url); },
+                    ontimeout: () => { reject(new Error('请求超时（10s）')); },
+                    onload: (res) => { resolve(res.finalUrl || url); },
                     onerror: () => {
-                        delete pendingRequests[key];
-                        pendingRequests[key] = GM_xmlhttpRequest({
+                        GM_xmlhttpRequest({
                             method: "GET", url,
                             headers: Object.assign({}, headers, { 'Range': 'bytes=0-0' }),
                             timeout: 10000,
-                            ontimeout: () => { delete pendingRequests[key]; reject(new Error('请求超时（10s）')); },
-                            onload: (res) => { done(res.finalUrl || url); },
-                            onerror: () => { delete pendingRequests[key]; resolve(url); }
+                            ontimeout: () => { reject(new Error('请求超时（10s）')); },
+                            onload: (res) => { resolve(res.finalUrl || url); },
+                            onerror: () => { resolve(url); }
                         });
                     }
                 });
@@ -1135,14 +1102,8 @@
             doc.on('click', '.listener-dl-execute', async () => {
                 if (!downloadState.downloader || !downloadState.protocol) return;
                 if (!base.panelFiles || !base.panelFiles.length) return;
-                if (base._executing) return;   // 上一次还没跑完，重复点会把提示弹两遍
-                base._executing = true;
-                try {
-                    const files = base.panelFiles.map((f, i) => ({ ...f, _idx: i }));
-                    await base.executeAction(files, base._activeAdapter);
-                } finally {
-                    base._executing = false;
-                }
+                const files = base.panelFiles.map((f, i) => ({ ...f, _idx: i }));
+                await base.executeAction(files, base._activeAdapter);
             });
             doc.on('click', '.listener-dl-copy-name', (e) => {
                 if (!base.panelFiles || !base.panelFiles.length) return;
@@ -1448,7 +1409,6 @@
                 width: 860,
                 padding: '16px 24px 16px',
                 customClass: { popup: 'fl-popup' },
-                willClose: () => { base._resetData(); },
             });
             base._updateMainButton();
             base._paintLinkCells();
@@ -1468,6 +1428,8 @@
         _updateMainButton() {
             const $btn = $('.listener-dl-execute');
             if (!$btn.length) return;
+            const $panel = $btn.closest('.fl-dl-panel');
+            if ($panel[0] && $panel[0].__flBusy) return;
             if (!base.panelFiles || !base.panelFiles.length) { $btn.prop('disabled', true).text('请先在页面中选择文件'); return; }
             if (!downloadState.downloader) { $btn.prop('disabled', true).text('请先选择下载器'); return; }
             const protos = PROTOCOLS[downloadState.downloader];
@@ -1574,18 +1536,31 @@
                 base.renderDownloadPanel(base.panelFiles || [], base._activeAdapter);
                 if (!r.isConfirmed) return;
             }
-            if (proto.act === 'nav') await base._executeNav(valid, adapter, proto);
-            else if (proto.act === 'push') await base._executePush(valid, adapter);
-            else if (proto.act === 'copy') await base._executeCopy(valid, adapter);
+            const $panel = $('.listener-dl-execute').closest('.fl-dl-panel');
+            if ($panel[0]) $panel[0].__flBusy = true;
+            try {
+                if (proto.act === 'nav') await base._executeNav(valid, adapter, proto);
+                else if (proto.act === 'push') await base._executePush(valid, adapter);
+                else if (proto.act === 'copy') await base._executeCopy(valid, adapter);
+            } catch (e) {
+                if ($panel[0]) $panel[0].__flBusy = false;
+                const $b = $panel.find('.listener-dl-execute');
+                $b.text('').prop('disabled', true);
+                base._updateMainButton();
+            } finally {
+                if ($panel[0]) $panel[0].__flBusy = false;
+            }
         },
         async _executeNav(files, adapter, proto) {
             const $btn = $('.listener-dl-execute');
+            const $scope = $btn.closest('.fl-dl-panel');
+            const uiAlive = () => $scope[0] && $scope[0].isConnected;
             if (files.length > 5) base.panelNotice('共 ' + files.length + ' 个文件，逐个触发中…如遇拦截可改用推送/复制', 'info');
             $btn.text('正在逐个触发 ' + files.length + ' 个下载…').prop('disabled', true);
             let ok = 0, fail = 0;
             for (let i = 0; i < files.length; i++) {
                 const f = files[i];
-                const $st = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
+                const $st = $scope.find('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
                 if (base._isBigBaiduLink(f)) {
                     const bar = base._paintBar($st, '下载中');
                     bar.paint(0);
@@ -1617,7 +1592,7 @@
                 if (i < files.length - 1) await base.sleep(800);
             }
             $btn.text('下载完成：成功 ' + ok + '，失败 ' + fail);
-            setTimeout(() => base._updateMainButton(), 4000);
+            setTimeout(() => { if (uiAlive()) base._updateMainButton(); }, 4000);
         },
         // 进度画在「链接」格上：两个下载路径共用，别各写一份
         _paintBar($st, label) {
@@ -1781,12 +1756,14 @@
         },
         async _executePush(files, adapter) {
             const $btn = $('.listener-dl-execute');
+            const $scope = $btn.closest('.fl-dl-panel');
+            const alive = () => $scope[0] && $scope[0].isConnected;
             const pid = downloadState.protocol;
             if (pid === 'idm') {
                 $btn.text('正在推送 ' + files.length + ' 个任务至 IDM…').prop('disabled', true);
                 let ok = 0, fail = 0, rejected = '', stopped = false;
                 for (let f of files) {
-                    const $cell = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
+                    const $cell = $scope.find('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
                     let r;
                     try {
                         r = stopped ? { ok: false, kind: 'down' } : await base.sendLinkToIDM(f.dlink, f.filename, f.rawSize || 0, base._cdnHeaders(f.dlink));
@@ -1805,7 +1782,7 @@
                         : 'IDM 未响应，请检查 IDM 浏览器插件是否启用';
                     base.panelNotice(why, ok > 0 ? 'warning' : 'error');
                 } else if (ok > 0) base.panelNotice('已推送至 IDM', 'success');
-                setTimeout(() => base._updateMainButton(), 4000);
+                setTimeout(() => { if (alive()) base._updateMainButton(); }, 4000);
             } else if (pid === 'rpc') {
                 const d = base.getValue('setting_rpc_domain'), p = base.getValue('setting_rpc_port'), pa = base.getValue('setting_rpc_path');
                 if (!d || !p || !pa) { base.showRPCSetting(false); return; }
@@ -1813,8 +1790,8 @@
                 const dirErr = base.rpcDir(base.getValue('setting_rpc_dir')).err;
                 let ok = 0, fail = 0;
                 for (let f of files) {
-                    const $cell = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
-                    base._lastNotice = '';   // 清掉上一条，免得把别人的提示当成本次失败原因
+                    const $cell = $scope.find('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
+                    base._lastNotice = '';   // 避免串原因
                     const r = await adapter.sendLinkToRPC(f.filename, f.dlink);
                     if (r === 'success') { ok++; $cell.html(MARK_OK); }
                     else { fail++; $cell.html(MARK_NO); base._markFailWithReason($cell, base._lastNotice); }
@@ -1823,19 +1800,18 @@
                 const dirNote = dirErr ? '；' + dirErr : '';
                 if (fail > 0) base.panelNotice('部分文件推送失败，原因见各行说明' + dirNote, 'error');
                 else if (ok > 0) base.panelNotice('已推送 ' + ok + ' 个任务给 Aria2，进度请看下载器' + dirNote, dirErr ? undefined : 'success');
-                setTimeout(() => base._updateMainButton(), 4000);
+                setTimeout(() => { if (alive()) base._updateMainButton(); }, 4000);
             } else if (pid === 'bc-rpc') {
-                // 先探远程，通就静默推送，不通调本地 BC
-                // 探活上限 2.5s：点击的激活态只有 5s，卡住就把导航机会耗光
+                // 探活限 2s，保留激活窗口
+                $btn.text('正在推送 ' + files.length + ' 个任务至 BitComet…').prop('disabled', true);
                 const remote = await Promise.race([
                     base.testBitcometConnection(true),
-                    base.sleep(2500).then(() => false),
+                    base.sleep(2000).then(() => false),
                 ]);
-                if (!remote) { base._launchBC(files); return; }
-                $btn.text('正在推送 ' + files.length + ' 个任务至 BitComet…').prop('disabled', true);
+                if (!remote) { base._launchBC(files, adapter, $scope); return; }
                 let ok = 0, fail = 0;
                 for (let f of files) {
-                    const $cell = $('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
+                    const $cell = $scope.find('.fl-dl-file-status[data-status-index="' + f._idx + '"]');
                     base._lastNotice = '';
                     const r = await base.sendLinkToBitcomet(f.filename, f.dlink, base._cdnHeaders(f.dlink));
                     if (r === 'success') { ok++; $cell.html(MARK_OK); }
@@ -1843,16 +1819,16 @@
                 }
                 $btn.text('推送完成：成功 ' + ok + '，失败 ' + fail);
                 if (ok > 0) base.panelNotice('已推送至 BitComet', 'success');
-                setTimeout(() => base._updateMainButton(), 4000);
+                setTimeout(() => { if (alive()) base._updateMainButton(); }, 4000);
             }
         },
         _markFailWithReason($cell, why) {
             const text = why || '推送失败（未返回原因）';
             $cell.siblings('.fl-dl-file-link').text(text).attr('title', text);
         },
-        _launchBC(files) {
-            const $btn = $('.listener-dl-execute');
-            const adapter = base._activeAdapter;
+        _launchBC(files, adapter, $scope) {
+            const $btn = $scope.find('.listener-dl-execute');
+            const alive = () => $scope[0] && $scope[0].isConnected;
             if (!adapter) return;
             let ok = 0, fail = 0, delay = 0;
             files.forEach((f, i) => {
@@ -1861,7 +1837,7 @@
                 try { b = adapter.convertLinkToBC(f.dlink, f.filename, panInfo.ua || navigator.userAgent); } catch (e) { b = ''; }
                 if (typeof b === 'object') b = b.link || '';
                 const url = decodeURIComponent(b || '');
-                const $cell = $('.fl-dl-file-status[data-status-index="' + idx + '"]');
+                const $cell = $scope.find('.fl-dl-file-status[data-status-index="' + idx + '"]');
                 if (!/^bc:\/\//i.test(url)) { fail++; $cell.html(MARK_NO); return; }
                 setTimeout(() => {
                     const a = document.createElement('a');
@@ -1877,10 +1853,11 @@
             });
             $btn.text('推送成功：成功 ' + ok + '，失败 ' + fail);
             if (fail > 0) base.panelNotice('调起失败 ' + fail + ' 个：bc:// 地址生成失败', 'error');
-            setTimeout(() => base._updateMainButton(), 4000);
+            setTimeout(() => { if (alive()) base._updateMainButton(); }, 4000);
         },
         async _executeCopy(files, adapter) {
             const $btn = $('.listener-dl-execute');
+            const $scope = $btn.closest('.fl-dl-panel');
             $btn.text('正在生成命令…').prop('disabled', true);
             const pid = downloadState.protocol;
             let parts = [];
@@ -1902,11 +1879,11 @@
                     cmd = f.dlink;   // XDown 等：复制原始直链
                 }
                 parts.push(cmd);
-                $('.fl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_OK);
+                $scope.find('.fl-dl-file-status[data-status-index="' + f._idx + '"]').html(MARK_OK);
             }
             base.setClipboard(parts.join('\n'));
             $btn.text('复制完成：成功 ' + parts.length + '，失败 0');
-            setTimeout(() => base._updateMainButton(), 4000);
+            setTimeout(() => { if ($scope[0] && $scope[0].isConnected) base._updateMainButton(); }, 4000);
         },
 
 
