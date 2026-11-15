@@ -4424,11 +4424,10 @@
             }
             let hit = items.filter(it => {
                 let n = this._name(it);
-                return n && picked.some(t => t.indexOf(n) !== -1);
+                return n && picked.some(t => t === n || t.startsWith(n + ' '));
             });
-            // 页面上勾了但名字对不上时保留整页，别让面板变空
             if (hit.length) items = hit;
-            else console.warn('[FerryLink] ctfile 勾选没对上文件名：', picked.slice(0, 3), items.map(it => this._name(it)).slice(0, 3));
+            else if (items.length) return base.renderDownloadPanel([], this);
             if (!items.length) return base.renderErrorPanel('当前目录没有可取的文件，请先进入子文件夹', this);
             if (items.length >= 100) return base.renderErrorPanel('当前目录文件过多，请进入子文件夹后再试', this);
             let ids = items.map(it => this._fid(it));
