@@ -1187,6 +1187,7 @@
                 e.stopPropagation();
                 base.showSetting();
             });
+            doc.on('click', '.listener-dl-confirm', () => Swal.close());
             doc.on('click', '.listener-dl-retry', async () => {
                 const adapter = base._activeAdapter;
                 if (!adapter) return;
@@ -1452,12 +1453,12 @@
             base._updateMainButton();
             base._paintLinkCells();
         },
-        renderErrorPanel(errMsg, adapter) {
+        renderErrorPanel(errMsg, adapter, okText) {
             base._activeAdapter = adapter;
             base.panelFiles = [];
             Swal.fire({
                 title: '获取下载链接失败',
-                html: `<div class="fl-dl-panel"><div class="fl-dl-error">${base.esc(errMsg)}<br><button class="fl-dl-retry listener-dl-retry">重试</button></div></div>`,
+                html: `<div class="fl-dl-panel"><div class="fl-dl-error">${base.esc(errMsg)}<br>${okText ? `<button class="fl-dl-retry listener-dl-confirm">${okText}</button>` : '<button class="fl-dl-retry listener-dl-retry">重试</button>'}</div></div>`,
                 allowOutsideClick: false,
                 showCloseButton: true, showConfirmButton: false,
                 width: 860,
@@ -4424,10 +4425,10 @@
             }
             let hit = items.filter(it => {
                 let n = this._name(it);
-                return n && picked.some(t => t === n || t.startsWith(n + ' '));
+                return n && picked.indexOf(n) !== -1;
             });
             if (hit.length) items = hit;
-            else if (items.length) return base.renderDownloadPanel([], this);
+            else if (items.length) return base.renderErrorPanel('勾选的文件不在本页，或全是文件夹', this, '确认');
             if (!items.length) return base.renderErrorPanel('当前目录没有可取的文件，请先进入子文件夹', this);
             if (items.length >= 100) return base.renderErrorPanel('当前目录文件过多，请进入子文件夹后再试', this);
             let ids = items.map(it => this._fid(it));
@@ -4595,6 +4596,8 @@
                 if (t && names.indexOf(t) === -1) names.push(t);
             };
             $('input[type=checkbox], input[type=radio]').filter(function () { return this.checked; }).each(function () {
+                let n = $(this).attr('aria-label');
+                if (n) { if (names.indexOf(n) === -1) names.push(n); return; }
                 let row = $(this).closest('tr, li, [role=row], [class*=row], [class*=item], [class*=card]');
                 if (row.length) push(row[0]);
             });
