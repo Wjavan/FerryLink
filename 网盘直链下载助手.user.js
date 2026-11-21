@@ -31,6 +31,7 @@
 // @match             *://*.ctfile.net/*
 // @match             *://*.ctfile.cn/*
 // @match             *://*.545c.com/*
+// @match             *://www.guangyapan.com/*
 // @noframes
 // @run-at            document-start
 // @require           https://registry.npmmirror.com/jquery/3.7.0/files/dist/jquery.min.js
@@ -54,6 +55,8 @@
 // @connect           ctfile.com
 // @connect           tv002.com
 // @connect           ctcontents.com
+// @connect           guangyapan.com
+// @connect           guangyacdn.com
 // @grant             GM_xmlhttpRequest
 // @grant             GM_setClipboard
 // @grant             GM_setValue
@@ -2233,6 +2236,9 @@
             .ctfile-button:active { background: #003eb3; border-color: #003eb3; }
             .ctfile-button:focus-visible { outline: 2px solid #0958d9; outline-offset: 2px; }
             .ctfile-button svg { width: 18px; height: 18px; flex-shrink: 0; }
+            .guangya-button { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 15px; margin-left: 8px; border: 1px solid #1677ff; border-radius: 6px; background: #1677ff; color: #fff; font-family: inherit; font-size: 14px; line-height: 1; white-space: nowrap; cursor: pointer; transition: background .2s ease, border-color .2s ease; }
+            .guangya-button:hover { background: #4096ff; border-color: #4096ff; }
+            .guangya-button:focus-visible { outline: 2px solid #4096ff; outline-offset: 2px; }
             .fl-button.fl-button-share { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; height: 36px; padding: 0 16px; margin: 0 8px 0 0; border: 1px solid var(--fl-bd, #09aaff); border-radius: 18px; background: var(--fl-bg, #f0faff); color: var(--fl-fg, #09aaff); font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
             .fl-button.fl-button-share:hover { background: var(--fl-bg-h, #e1f4ff); }
             .fl-button.fl-button-share:focus-visible { outline: 2px solid var(--fl-bd, #09aaff); outline-offset: 2px; }
@@ -2442,6 +2448,15 @@
         yidong: {
             pcs: {"0": "https://personal-kd-njs.yun.139.com/hcy/file/getDownloadUrl", "1": "https://caiyun.139.com/stapi/outlink/content/download"},
             btn: {"home": ".top_button"},
+            api: {0: "API 下载", 1: ''},
+            aria: {0: "Aria 下载", 1: ''},
+            rpc: {0: "RPC 下载", 1: ''},
+            curl: {0: "cURL 下载", 1: ''},
+            bc: {0: "BC 下载", 1: ''},
+        },
+        guangya: {
+            pcs: {"0": "https://api.guangyapan.com/userres/v1/get_res_download_url"},
+            btn: {"home": ""},
             api: {0: "API 下载", 1: ''},
             aria: {0: "Aria 下载", 1: ''},
             rpc: {0: "RPC 下载", 1: ''},
@@ -4746,6 +4761,157 @@
             this._watchHash();
         }
     };
+    let guangya = {
+        site: 'guangya',
+        // 登录态键名带随机后缀，按内容找 access_token
+        _token() {
+            let token = '';
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    let raw = localStorage.getItem(localStorage.key(i));
+                    if (!raw || raw.charAt(0) !== '{') continue;
+                    let val;
+                    try { val = JSON.parse(raw); } catch (e) { continue; }
+                    if (val && typeof val.access_token === 'string' && val.access_token) token = val.access_token;
+                }
+            } catch (e) { /* storage unavailable */ }
+            return token;
+        },
+        // 选中项只存在虚拟表的 props 里，DOM 上只有勾选态
+        _table() {
+            let row = document.querySelector('.swangpan-file-list-table__row');
+            if (!row) return null;
+            let key = Object.keys(row).find(k => k.indexOf('__reactFiber$') === 0 || k.indexOf('__reactInternalInstance$') === 0);
+            let node = key ? row[key] : null;
+            for (let i = 0; node && i < 20; i++) {
+                let props = node.memoizedProps;
+                if (props && Array.isArray(props.selectedItems) && Array.isArray(props.dataSource)) return props;
+                node = node.return;
+            }
+            return null;
+        },
+        getSelectedList() {
+            try {
+                let table = this._table();
+                if (!table) return [];
+                let ids = table.selectedItems.map(String);
+                return table.dataSource.filter(f => ids.indexOf(String(f.fileId)) !== -1);
+            } catch (e) { return []; }
+        },
+        isOnlyFolder() {
+            return selectedFiles.length > 0 && selectedFiles.every(f => f.resType === 2);
+        },
+        async getFileUrlByOnce(item, index, token) {
+            try {
+                let res = await base.post(panInfo.pcs[0], { fileId: item.fileId }, {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer' + ' ' + token,
+                });
+                if (res && res.data && res.data.signedURL) return { index, downloadUrl: res.data.signedURL };
+                return { index, downloadUrl: (res && res.msg) || '获取下载地址失败，请刷新重试' };
+            } catch (e) {
+                return { index, downloadUrl: '获取下载地址失败：' + (e && e.message || '网络错误') };
+            }
+        },
+        async getPCSLink() {
+            selectedFiles = this.getSelectedList();
+            if (selectedFiles.length === 0) {
+                Swal.close(); return base.renderDownloadPanel([], this);
+            }
+            if (this.isOnlyFolder()) {
+                Swal.close(); return message.error('提示：勾选的全是文件夹，请进入文件夹后选择文件！');
+            }
+            let token = this._token();
+            if (!token) return message.error('提示：登录凭证获取失败，请先登录后刷新页面！');
+            let queue = selectedFiles.map((item, index) => this.getFileUrlByOnce(item, index, token));
+            let res = await Promise.all(queue);
+            res.forEach(val => { selectedFiles[val.index].downloadUrl = val.downloadUrl; });
+            base.renderDownloadPanel(this.normalizeList(selectedFiles), this);
+        },
+        normalizeList(list) {
+            return list.map(v => ({
+                filename: v.fileName || '',
+                sizeStr: base.sizeFormat(v.fileSize),
+                rawSize: +v.fileSize || 0,
+                dlink: v.downloadUrl || '',
+                isFolder: v.resType === 2,
+                raw: v,
+            }));
+        },
+        convertLinkToAria(link, filename) {
+            filename = base.fixFilename(filename);
+            return encodeURIComponent(`aria2c "${link}" --out "${filename}" -x 16 -s 16 -k 1M`);
+        },
+        convertLinkToBC(link, filename) {
+            let bc = `AA/${encodeURIComponent(filename)}/?url=${encodeURIComponent(link)}ZZ`;
+            return encodeURIComponent(`bc://http/${base.e(bc)}`);
+        },
+        convertLinkToCurl(link, filename) {
+            let terminal = base.settingChoice('setting_terminal_type');
+            filename = base.fixFilename(filename);
+            return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}"`);
+        },
+        async sendLinkToRPC(filename, link) {
+            let rpc = base._rpcConfig();
+            if (!rpc) return 'fail';
+            let rpcData = {
+                id: new Date().getTime(),
+                jsonrpc: '2.0',
+                method: 'aria2.addUri',
+                params: [`token:${rpc.token}`, [link], {
+                    dir: rpc.dir,
+                    out: base.safeRpcFilename(filename),
+                    header: []
+                }]
+            };
+            try {
+                let res = await base.post(rpc.url, rpcData, {}, '');
+                if (res.result) return 'success';
+                base.panelNotice('Aria2 拒绝请求：' + ((res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
+                return 'fail';
+            } catch (e) {
+                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
+                return 'fail';
+            }
+        },
+        addPageListener() {
+            doc.on('click', '.fl-button', async (e) => {
+                if ($(e.target).closest('.ant-dropdown, .ant-dropdown-menu').length) return;
+                Swal.showLoading();
+                try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
+            });
+        },
+        addButton() {
+            let $button = $('<button type="button" class="ant-btn guangya-button fl-button"><span>下载助手</span></button>');
+            base.mountWithRetry(() => {
+                pageNum = this.detectPage();
+                if (pageNum !== 'home') return false;
+                let anchor = null;
+                let btns = document.querySelectorAll('button.ant-btn');
+                for (let i = 0; i < btns.length; i++) {
+                    if ((btns[i].innerText || '').replace(/\s+/g, '') === '云添加') { anchor = btns[i]; break; }
+                }
+                if (!anchor) return false;
+                $(anchor).after($button);
+                return true;
+            }, () => this.detectPage() === 'home');
+            this.addPageListener();
+        },
+        detectPage() {
+            if (!location.hash || /^#\/home(\/|$)/.test(location.hash)) return 'home';
+            return '';
+        },
+        async initFerryLink() {
+            base.initDefaultConfig();
+            base.addFerryLinkStyle();
+            pageNum = this.detectPage();
+            panInfo = LOCAL_CONFIG.guangya;
+            Object.freeze && Object.freeze(panInfo);
+            this.addButton();
+            base.createTip();
+            base.registerMenuCommand();
+        }
+    };
     let main = {
         init() {
             base.migrate();
@@ -4772,6 +4938,9 @@
             }
             if (/(^|\.)ctfile\.(com|net|cn)$|(^|\.)545c\.com$/.test(location.host)) {
                 ctfile.initFerryLink();
+            }
+            if (/^www\.guangyapan\.com$/.test(location.host)) {
+                guangya.initFerryLink();
             }
         }
     };
