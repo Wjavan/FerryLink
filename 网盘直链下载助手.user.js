@@ -4896,11 +4896,15 @@
             base.mountWithRetry(() => {
                 pageNum = this.detectPage();
                 if (pageNum !== 'home') return false;
-                let anchor = null;
+                // 「云添加」只在全部页有，分类页工具栏只剩「上传」
+                let anchor = null, fallback = null;
                 let btns = document.querySelectorAll('button.ant-btn');
                 for (let i = 0; i < btns.length; i++) {
-                    if ((btns[i].innerText || '').replace(/\s+/g, '') === '云添加') { anchor = btns[i]; break; }
+                    let text = (btns[i].innerText || '').replace(/\s+/g, '');
+                    if (text === '云添加') { anchor = btns[i]; break; }
+                    if (text === '上传') fallback = btns[i];
                 }
+                anchor = anchor || fallback;
                 if (!anchor) return false;
                 $(anchor).after($button);
                 return true;
@@ -4908,7 +4912,9 @@
             this.addPageListener();
         },
         detectPage() {
-            if (!location.hash || /^#\/home(\/|$)/.test(location.hash)) return 'home';
+            // 「最近」是集合行（一行代表多个文件），不能当单文件下载，故意不接
+            if (!location.hash) return 'home';
+            if (/^#\/home\/(all|video|img|audio|doc|installer|search)(\/|$)/.test(location.hash)) return 'home';
             return '';
         },
         async initFerryLink() {
