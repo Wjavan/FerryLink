@@ -2236,9 +2236,9 @@
             .ctfile-button:active { background: #003eb3; border-color: #003eb3; }
             .ctfile-button:focus-visible { outline: 2px solid #0958d9; outline-offset: 2px; }
             .ctfile-button svg { width: 18px; height: 18px; flex-shrink: 0; }
-            .guangya-button { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 15px; margin-left: 8px; border: 1px solid #1677ff; border-radius: 6px; background: #1677ff; color: #fff; font-family: inherit; font-size: 14px; line-height: 1; white-space: nowrap; cursor: pointer; transition: background .2s ease, border-color .2s ease; }
-            .guangya-button:hover { background: #4096ff; border-color: #4096ff; }
-            .guangya-button:focus-visible { outline: 2px solid #4096ff; outline-offset: 2px; }
+            .guangya-button { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 15px; margin-left: 8px; border: 1px solid transparent; border-radius: 8px; background: #ff6800; color: #fff; font-family: inherit; font-size: 14px; font-weight: 400; line-height: 1; white-space: nowrap; cursor: pointer; transition: background .2s ease, border-color .2s ease; }
+            .guangya-button:hover { background: #ff8533; border-color: #ff8533; }
+            .guangya-button:focus-visible { outline: 2px solid #ff6800; outline-offset: 2px; }
             .fl-button.fl-button-share { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; height: 36px; padding: 0 16px; margin: 0 8px 0 0; border: 1px solid var(--fl-bd, #09aaff); border-radius: 18px; background: var(--fl-bg, #f0faff); color: var(--fl-fg, #09aaff); font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
             .fl-button.fl-button-share:hover { background: var(--fl-bg-h, #e1f4ff); }
             .fl-button.fl-button-share:focus-visible { outline: 2px solid var(--fl-bd, #09aaff); outline-offset: 2px; }
