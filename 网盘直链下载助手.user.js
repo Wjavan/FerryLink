@@ -4779,14 +4779,19 @@
         },
         // 选中项只存在虚拟表的 props 里，DOM 上只有勾选态
         _table() {
-            let row = document.querySelector('.swangpan-file-list-table__row');
-            if (!row) return null;
-            let key = Object.keys(row).find(k => k.indexOf('__reactFiber$') === 0 || k.indexOf('__reactInternalInstance$') === 0);
-            let node = key ? row[key] : null;
-            for (let i = 0; node && i < 20; i++) {
-                let props = node.memoizedProps;
-                if (props && Array.isArray(props.selectedItems) && Array.isArray(props.dataSource)) return props;
-                node = node.return;
+            let anchors = [
+                document.querySelector('.swangpan-file-list__root[data-ui="file-list"]'),
+                document.querySelector('.swangpan-file-list-table__row'),
+            ];
+            for (let el of anchors) {
+                if (!el) continue;
+                let key = Object.keys(el).find(k => k.indexOf('__reactFiber$') === 0 || k.indexOf('__reactInternalInstance$') === 0);
+                let node = key ? el[key] : null;
+                for (let i = 0; node && i < 20; i++) {
+                    let props = node.memoizedProps;
+                    if (props && Array.isArray(props.selectedItems) && Array.isArray(props.dataSource)) return props;
+                    node = node.return;
+                }
             }
             return null;
         },
@@ -4823,9 +4828,14 @@
             }
             let token = this._token();
             if (!token) return message.error('提示：登录凭证获取失败，请先登录后刷新页面！');
-            let queue = selectedFiles.map((item, index) => this.getFileUrlByOnce(item, index, token));
-            let res = await Promise.all(queue);
-            res.forEach(val => { selectedFiles[val.index].downloadUrl = val.downloadUrl; });
+            // 一次 15 个，批间停 1 秒，防接口限流
+            const BATCH = 15;
+            for (let i = 0; i < selectedFiles.length; i += BATCH) {
+                let batch = selectedFiles.slice(i, i + BATCH);
+                let got = await Promise.all(batch.map((item, j) => this.getFileUrlByOnce(item, i + j, token)));
+                got.forEach(val => { selectedFiles[val.index].downloadUrl = val.downloadUrl; });
+                if (i + BATCH < selectedFiles.length) await base.sleep(1000);
+            }
             base.renderDownloadPanel(this.normalizeList(selectedFiles), this);
         },
         normalizeList(list) {
