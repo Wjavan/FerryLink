@@ -1057,13 +1057,12 @@
                 this.showSetting();
             });
         },
-        // showLoading 会沿用上次弹窗的 position；先关掉再居中弹，避免跟顶部 toast 叠在一起
-        // 不用 didOpen：它被 setTimeout 延后，迟到的 showLoading 会作用到已经打开的面板上
+        // 先关掉上次弹窗，否则会沿用它的位置
         loading(title) {
             Swal.close();
             Swal.fire({
                 position: 'center',
-                title: title || undefined,
+                title,
                 showConfirmButton: false
             });
             Swal.showLoading();
