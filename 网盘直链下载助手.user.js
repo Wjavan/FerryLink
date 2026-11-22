@@ -1057,6 +1057,18 @@
                 this.showSetting();
             });
         },
+        // 先关掉上次弹窗，否则会沿用它的位置
+        loading() {
+            Swal.close();
+            Swal.fire({
+                position: 'center',
+                title: '获取下载链接',
+                html: '<div class="fl-fetch-progress">正在获取…</div>',
+                allowOutsideClick: false,
+                showConfirmButton: false
+            });
+            Swal.showLoading();
+        },
         panelNotice(text, type, ms) {
             base._lastNotice = text;
             $('.fl-dl-toast').remove();
@@ -1152,8 +1164,7 @@
             doc.on('click', '.listener-dl-retry', async () => {
                 const adapter = base._activeAdapter;
                 if (!adapter) return;
-                Swal.close();
-                Swal.showLoading();
+                base.loading();
                 try { await adapter.getPCSLink(); }
                 catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), adapter); }
                 finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
@@ -2500,9 +2511,7 @@
         addPageListener() {
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
-                // 不走 didOpen 调 showLoading：它包在 setTimeout 里，面板已在 DOM
-                Swal.fire({ title: '获取下载链接', html: '<div class="fl-fetch-progress">正在获取…</div>', allowOutsideClick: false, showConfirmButton: false });
-                Swal.showLoading();
+                base.loading();
                 if (pageNum === 'share') this.setBDUSS();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
@@ -3032,7 +3041,7 @@
         addPageListener() {
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
-                Swal.showLoading();
+                base.loading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
         },
@@ -3251,7 +3260,7 @@
         addPageListener() {
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
-                Swal.showLoading();
+                base.loading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
         },
@@ -3454,7 +3463,7 @@
         addPageListener() {
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
-                Swal.showLoading();
+                base.loading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
         },
@@ -3773,7 +3782,7 @@
             this._listenerBound = true;
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
-                Swal.showLoading();
+                base.loading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
         },
@@ -3952,7 +3961,7 @@
         addPageListener() {
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
-                Swal.showLoading();
+                base.loading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
         },
@@ -4210,7 +4219,7 @@
         addPageListener() {
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
-                Swal.showLoading();
+                base.loading();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
         },
