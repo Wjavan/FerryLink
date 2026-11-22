@@ -1058,11 +1058,12 @@
             });
         },
         // 先关掉上次弹窗，否则会沿用它的位置
-        loading(title) {
+        loading() {
             Swal.close();
             Swal.fire({
                 position: 'center',
-                title,
+                title: '获取下载链接',
+                html: '<div class="fl-fetch-progress">正在获取…</div>',
                 showConfirmButton: false
             });
             Swal.showLoading();
@@ -2509,7 +2510,7 @@
         addPageListener() {
             doc.on('click', '.fl-button', async (e) => {
                 if ($(e.target).closest('.g-button-menu, .menu').length) return;
-                base.loading('获取下载链接');
+                base.loading();
                 if (pageNum === 'share') this.setBDUSS();
                 try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
             });
