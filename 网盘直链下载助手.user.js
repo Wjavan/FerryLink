@@ -1064,6 +1064,7 @@
                 position: 'center',
                 title: '获取下载链接',
                 html: '<div class="fl-fetch-progress">正在获取…</div>',
+                allowOutsideClick: false,
                 showConfirmButton: false
             });
             Swal.showLoading();
