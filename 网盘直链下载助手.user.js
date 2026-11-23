@@ -4768,7 +4768,7 @@
     };
     let guangya = {
         site: 'guangya',
-        // 登录态键名带随机后缀，按内容找 access_token
+        // 登录态键名随机化，按值检索 access_token
         _token() {
             let token = '';
             try {
@@ -4782,7 +4782,7 @@
             } catch (e) { /* storage unavailable */ }
             return token;
         },
-        // 选中项只存在虚拟表的 props 里，DOM 上只有勾选态
+        // 选中项仅存于虚拟列表 props
         _table() {
             let anchors = [
                 document.querySelector('.swangpan-file-list__root[data-ui="file-list"]'),
@@ -4805,7 +4805,7 @@
                 let table = this._table();
                 if (!table) return [];
                 let ids = table.selectedItems.map(String);
-                // 最近页选中项是 collectionId，需展开 actionDetails
+                // 最近页以 collectionId 为键，需展开 actionDetails
                 let recent = /^#\/home\/recent(\/|$)/.test(location.hash), key = recent ? 'collectionId' : 'fileId';
                 let rows = table.dataSource.filter(f => ids.indexOf(String(f[key])) !== -1);
                 return recent ? rows.reduce((a, r) => a.concat(r.actionDetails || [r]), []) : rows;
@@ -4820,7 +4820,7 @@
                 'Authorization': 'Bearer ' + token,
             };
         },
-        // 改名失败返回 false，不抛错
+        // 失败返回 false，不抛出异常
         async _renameFile(fileId, newName, token) {
             try {
                 let res = await base.post(panInfo.pcs['1'], { fileId: fileId, newName: newName }, this._headers(token));
@@ -4830,14 +4830,14 @@
                 return false;
             }
         },
-        // >10MB 走视频接口：临时改 .mp4（该接口只认后缀），取链后改回
+        // 视频接口仅校验扩展名，大文件临时改 .mp4 取链
         async _bigFileUrl(item, token) {
             let name = item.fileName || '';
             let renamed = false;
             try {
                 if (!/\.mp4$/i.test(name)) {
                     if (!name) return '';
-                    // 回包可能丢，按已改名处理
+                    // 响应可能丢失，按已改名处理
                     renamed = true;
                     if (!(await this._renameFile(item.fileId, name + '.mp4', token))) return '';
                 }
@@ -4850,7 +4850,7 @@
             } catch (e) {
                 return '';
             } finally {
-                // 改回原名，失败重试一次
+                // 还原原名，失败重试一次
                 if (renamed) {
                     let back = await this._renameFile(item.fileId, name, token);
                     if (!back) back = await this._renameFile(item.fileId, name, token);
@@ -4860,7 +4860,7 @@
         },
         async getFileUrlByOnce(item, index, token) {
             try {
-                // 超 10MB 先试视频通道
+                // 大文件优先视频通道
                 if (+item.fileSize > 10 * 1024 * 1024) {
                     let big = await this._bigFileUrl(item, token);
                     if (big && /^https?:\/\//.test(big)) return { index, downloadUrl: big };
@@ -4880,11 +4880,11 @@
             if (this.isOnlyFolder()) {
                 Swal.close(); return message.error('提示：勾选的全是文件夹，请进入文件夹后选择文件！');
             }
-            // 只看 resType，不看后缀
+            // 以 resType 判定文件夹
             selectedFiles = selectedFiles.filter(f => !(f && f.resType === 2));
             let token = this._token();
             if (!token) return message.error('提示：登录凭证获取失败，请先登录后刷新页面！');
-            // 大文件串行防并发改名
+            // 大文件串行，避免并发改名
             const BATCH = 15, BIG_LIMIT = 10 * 1024 * 1024;
             let smallIdx = [], bigIdx = [];
             selectedFiles.forEach((f, i) => { (+f.fileSize > BIG_LIMIT ? bigIdx : smallIdx).push(i); });
@@ -4973,7 +4973,7 @@
                 }
                 if (!anchor) return false;
                 $(anchor).before($button);
-                // 分类页无 gap，补 margin
+                // 分类页容器无 gap，补外边距
                 let pcs = getComputedStyle(anchor.parentElement);
                 let hasGap = pcs.display === 'flex' && parseFloat(pcs.gap) > 0;
                 $button.css('margin-right', hasGap ? '0' : '16px');
