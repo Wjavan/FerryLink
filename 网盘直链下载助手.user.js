@@ -290,7 +290,7 @@
         },
         getStorage(key) {
             let v = null;
-            if (key === 'token' || !LEGACY_LOCAL_KEYS.includes(key)) {
+            if (key !== 'token' && !LEGACY_LOCAL_KEYS.includes(key)) {
                 try { v = localStorage.getItem(key); } catch (e) { /* storage unavailable */ }
             }
             if (v === null || v === undefined) v = GM_getValue(key, null);
@@ -342,7 +342,7 @@
                 payload = JSON.stringify(value);
             }
             if (key === 'token') {
-                try { localStorage.setItem(key, payload); } catch (e) { /* storage unavailable */ }
+                try { localStorage.removeItem(key); } catch (e) { /* storage unavailable */ }
             }
             return GM_setValue(key, payload);
         },
