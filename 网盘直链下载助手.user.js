@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name              FerryLink
 // @namespace         https://github.com/Wjavan/FerryLink
-// @version           1.6.6
+// @version           1.7.0
 // @author            Wjavan
-// @description       支持百度/阿里/天翼/迅雷/夸克/移动/城通网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/NDM/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
+// @description       支持百度/阿里/天翼/迅雷/夸克/移动/城通/光鸭网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/NDM/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
 // @copyright         2026, Wjavan (https://github.com/Wjavan)
 // @license           GPL-3.0
 // @compatible        Chrome
@@ -31,6 +31,7 @@
 // @match             *://*.ctfile.net/*
 // @match             *://*.ctfile.cn/*
 // @match             *://*.545c.com/*
+// @match             *://www.guangyapan.com/*
 // @noframes
 // @run-at            document-start
 // @require           https://registry.npmmirror.com/jquery/3.7.0/files/dist/jquery.min.js
@@ -54,6 +55,8 @@
 // @connect           ctfile.com
 // @connect           tv002.com
 // @connect           ctcontents.com
+// @connect           guangyapan.com
+// @connect           guangyacdn.com
 // @grant             GM_xmlhttpRequest
 // @grant             GM_setClipboard
 // @grant             GM_setValue
@@ -2233,6 +2236,9 @@
             .ctfile-button:active { background: #003eb3; border-color: #003eb3; }
             .ctfile-button:focus-visible { outline: 2px solid #0958d9; outline-offset: 2px; }
             .ctfile-button svg { width: 18px; height: 18px; flex-shrink: 0; }
+            .guangya-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 36px; padding: 0 15px; margin: 0; border: 1px solid transparent; border-radius: 8px; background: #ff6800; color: #fff; font-family: inherit; font-size: 14px; font-weight: 400; line-height: 1; white-space: nowrap; cursor: pointer; transition: background .2s ease, border-color .2s ease; }
+            .guangya-button:hover { background: #f06200; border-color: #f06200; }
+            .guangya-button:focus-visible { outline: 2px solid #ff6800; outline-offset: 2px; }
             .fl-button.fl-button-share { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; height: 36px; padding: 0 16px; margin: 0 8px 0 0; border: 1px solid var(--fl-bd, #09aaff); border-radius: 18px; background: var(--fl-bg, #f0faff); color: var(--fl-fg, #09aaff); font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
             .fl-button.fl-button-share:hover { background: var(--fl-bg-h, #e1f4ff); }
             .fl-button.fl-button-share:focus-visible { outline: 2px solid var(--fl-bd, #09aaff); outline-offset: 2px; }
@@ -2442,6 +2448,20 @@
         yidong: {
             pcs: {"0": "https://personal-kd-njs.yun.139.com/hcy/file/getDownloadUrl", "1": "https://caiyun.139.com/stapi/outlink/content/download"},
             btn: {"home": ".top_button"},
+            api: {0: "API 下载", 1: ''},
+            aria: {0: "Aria 下载", 1: ''},
+            rpc: {0: "RPC 下载", 1: ''},
+            curl: {0: "cURL 下载", 1: ''},
+            bc: {0: "BC 下载", 1: ''},
+        },
+        guangya: {
+            pcs: {
+                "0": "https://api.guangyapan.com/userres/v1/get_res_download_url",
+                "1": "https://api.guangyapan.com/userres/v1/file/rename",
+                "2": "https://api.guangyapan.com/userres/v1/file/get_file_detail",
+                "3": "https://api.guangyapan.com/userres/v1/file/get_vod_download_url",
+            },
+            btn: {"home": ""},
             api: {0: "API 下载", 1: ''},
             aria: {0: "Aria 下载", 1: ''},
             rpc: {0: "RPC 下载", 1: ''},
@@ -4746,6 +4766,236 @@
             this._watchHash();
         }
     };
+    let guangya = {
+        site: 'guangya',
+        // 登录态键名随机化，按值检索 access_token
+        _token() {
+            let token = '';
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    let raw = localStorage.getItem(localStorage.key(i));
+                    if (!raw || raw.charAt(0) !== '{') continue;
+                    let val;
+                    try { val = JSON.parse(raw); } catch (e) { continue; }
+                    if (val && typeof val.access_token === 'string' && val.access_token) token = val.access_token;
+                }
+            } catch (e) { /* storage unavailable */ }
+            return token;
+        },
+        // 选中项仅存于虚拟列表 props
+        _table() {
+            let anchors = [
+                document.querySelector('.swangpan-file-list__root[data-ui="file-list"]'),
+                document.querySelector('.swangpan-file-list-table__row'),
+            ];
+            for (let el of anchors) {
+                if (!el) continue;
+                let key = Object.keys(el).find(k => k.indexOf('__reactFiber$') === 0 || k.indexOf('__reactInternalInstance$') === 0);
+                let node = key ? el[key] : null;
+                for (let i = 0; node && i < 20; i++) {
+                    let props = node.memoizedProps;
+                    if (props && Array.isArray(props.selectedItems) && Array.isArray(props.dataSource)) return props;
+                    node = node.return;
+                }
+            }
+            return null;
+        },
+        getSelectedList() {
+            try {
+                let table = this._table();
+                if (!table) return [];
+                let ids = table.selectedItems.map(String);
+                // 最近页以 collectionId 为键，需展开 actionDetails
+                let recent = /^#\/home\/recent(\/|$)/.test(location.hash), key = recent ? 'collectionId' : 'fileId';
+                let rows = table.dataSource.filter(f => ids.indexOf(String(f[key])) !== -1);
+                return recent ? rows.reduce((a, r) => a.concat(r.actionDetails || [r]), []) : rows;
+            } catch (e) { return []; }
+        },
+        isOnlyFolder() {
+            return selectedFiles.length > 0 && selectedFiles.every(f => f.resType === 2);
+        },
+        _headers(token) {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token,
+            };
+        },
+        // 失败返回 false，不抛出异常
+        async _renameFile(fileId, newName, token) {
+            try {
+                let res = await base.post(panInfo.pcs['1'], { fileId: fileId, newName: newName }, this._headers(token));
+                if (!res) return false;
+                return res.code === 0 || res.msg === 'success';
+            } catch (e) {
+                return false;
+            }
+        },
+        // 视频接口仅校验扩展名，大文件临时改 .mp4 取链
+        async _bigFileUrl(item, token) {
+            let name = item.fileName || '';
+            let renamed = false;
+            try {
+                if (!/\.mp4$/i.test(name)) {
+                    if (!name) return '';
+                    // 响应可能丢失，按已改名处理
+                    renamed = true;
+                    if (!(await this._renameFile(item.fileId, name + '.mp4', token))) return '';
+                }
+                let detail = await base.post(panInfo.pcs['2'], { fileId: item.fileId }, this._headers(token));
+                let gcid = detail && detail.data && detail.data.fileInfo ? detail.data.fileInfo.gcid : '';
+                if (!gcid) return '';
+                let vod = await base.post(panInfo.pcs['3'], { fileId: item.fileId, gcid: gcid }, this._headers(token));
+                if (vod && vod.data && vod.data.signedURL) return vod.data.signedURL;
+                return '';
+            } catch (e) {
+                return '';
+            } finally {
+                // 还原原名，失败重试一次
+                if (renamed) {
+                    let back = await this._renameFile(item.fileId, name, token);
+                    if (!back) back = await this._renameFile(item.fileId, name, token);
+                    if (!back) base.panelNotice('文件名恢复失败，请手动改回：' + name, 'error');
+                }
+            }
+        },
+        async getFileUrlByOnce(item, index, token) {
+            try {
+                if (+item.fileSize > 10 * 1024 * 1024) {
+                    let big = await this._bigFileUrl(item, token);
+                    if (big && /^https?:\/\//.test(big)) return { index, downloadUrl: big };
+                }
+                let res = await base.post(panInfo.pcs[0], { fileId: item.fileId }, this._headers(token));
+                if (res && res.data && res.data.signedURL) return { index, downloadUrl: res.data.signedURL };
+                return { index, downloadUrl: (res && res.msg) || '获取下载地址失败，请刷新重试' };
+            } catch (e) {
+                return { index, downloadUrl: '获取下载地址失败：' + (e && e.message || '网络错误') };
+            }
+        },
+        async getPCSLink() {
+            selectedFiles = this.getSelectedList();
+            if (selectedFiles.length === 0) {
+                Swal.close(); return base.renderDownloadPanel([], this);
+            }
+            if (this.isOnlyFolder()) {
+                Swal.close(); return message.error('提示：勾选的全是文件夹，请进入文件夹后选择文件！');
+            }
+            // 以 resType 判定文件夹
+            selectedFiles = selectedFiles.filter(f => !(f && f.resType === 2));
+            let token = this._token();
+            if (!token) return message.error('提示：登录凭证获取失败，请先登录后刷新页面！');
+            // 大文件串行，避免并发改名
+            const BATCH = 15, BIG_LIMIT = 10 * 1024 * 1024;
+            let smallIdx = [], bigIdx = [];
+            selectedFiles.forEach((f, i) => { (+f.fileSize > BIG_LIMIT ? bigIdx : smallIdx).push(i); });
+            for (let k = 0; k < smallIdx.length; k += BATCH) {
+                let idxs = smallIdx.slice(k, k + BATCH);
+                let got = await Promise.all(idxs.map((i) => this.getFileUrlByOnce(selectedFiles[i], i, token)));
+                got.forEach(val => { selectedFiles[val.index].downloadUrl = val.downloadUrl; });
+                if (k + BATCH < smallIdx.length) await base.sleep(1000);
+            }
+            for (let n = 0; n < bigIdx.length; n++) {
+                let i = bigIdx[n];
+                let val = await this.getFileUrlByOnce(selectedFiles[i], i, token);
+                selectedFiles[i].downloadUrl = val.downloadUrl;
+                if (n + 1 < bigIdx.length) await base.sleep(300);
+            }
+            base.renderDownloadPanel(this.normalizeList(selectedFiles), this);
+        },
+        normalizeList(list) {
+            return list.map(v => ({
+                filename: v.fileName || '',
+                sizeStr: base.sizeFormat(v.fileSize),
+                rawSize: +v.fileSize || 0,
+                dlink: v.downloadUrl || '',
+                isFolder: v.resType === 2,
+                raw: v,
+            }));
+        },
+        convertLinkToAria(link, filename, ua) {
+            filename = base.fixFilename(filename);
+            return encodeURIComponent(`aria2c "${link}" --out "${filename}" -x 16 -s 16 -k 1M`);
+        },
+        convertLinkToBC(link, filename, ua) {
+            let bc = `AA/${encodeURIComponent(filename)}/?url=${encodeURIComponent(link)}ZZ`;
+            return encodeURIComponent(`bc://http/${base.e(bc)}`);
+        },
+        convertLinkToCurl(link, filename, ua) {
+            let terminal = base.settingChoice('setting_terminal_type');
+            filename = base.fixFilename(filename);
+            return encodeURIComponent(`${terminal !== 'wp' ? 'curl' : 'curl.exe'} -L -C - "${link}" -o "${filename}"`);
+        },
+        async sendLinkToRPC(filename, link) {
+            let rpc = base._rpcConfig();
+            if (!rpc) return 'fail';
+            let url = rpc.url;
+            let rpcData = {
+                id: new Date().getTime(),
+                jsonrpc: '2.0',
+                method: 'aria2.addUri',
+                params: [`token:${rpc.token}`, [link], {
+                    dir: rpc.dir,
+                    out: base.safeRpcFilename(filename),
+                    header: []
+                }]
+            };
+            try {
+                let res = await base.post(url, rpcData, {}, '');
+                if (res.result) return 'success';
+                base.panelNotice('Aria2 拒绝请求：' + ((res.error && res.error.message) || '未知错误（请检查 RPC 密钥与保存路径）'));
+                return 'fail';
+            } catch (e) {
+                base.panelNotice('无法连接 RPC（' + rpc.domain + ':' + rpc.port + '）' + (e && e.message ? '：' + e.message : '') + '，请确认下载器已启动且 RPC 服务已开启');
+                return 'fail';
+            }
+        },
+        addPageListener() {
+            doc.on('click', '.fl-button', async (e) => {
+                if ($(e.target).closest('.ant-dropdown, .ant-dropdown-menu').length) return;
+                base.loading();
+                try { await this.getPCSLink(); } catch (err) { Swal.close(); base.renderErrorPanel('获取下载链接失败：' + (err && err.message || '未知错误'), this); } finally { if (document.querySelector('.swal2-popup.swal2-loading')) Swal.close(); }
+            });
+        },
+        addButton() {
+            let $button = $(
+                '<button type="button" class="ant-btn guangya-button fl-button">' +
+                '<span class="ant-btn-icon"><span role="img" aria-label="download" class="swangpan-icon swangpan-icon-download" style="display:inline-flex;line-height:0">' +
+                '<svg width="1em" height="1em" fill="none" viewBox="0 0 18 18"><path fill="currentColor" d="M13.134 4.25a4.25 4.25 0 0 1 4.25 4.25V12a4.75 4.75 0 0 1-4.75 4.75h-7A4.75 4.75 0 0 1 .884 12V8.5a4.25 4.25 0 0 1 4.25-4.25.75.75 0 0 1 0 1.5 2.75 2.75 0 0 0-2.75 2.75V12a3.25 3.25 0 0 0 3.25 3.25h7a3.25 3.25 0 0 0 3.25-3.25V8.5a2.75 2.75 0 0 0-2.75-2.75.75.75 0 0 1 0-1.5M9 1.25a.75.75 0 0 1 .75.75v9.19l1.72-1.72a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 1 1 1.06-1.06l1.72 1.72V2A.75.75 0 0 1 9 1.25"/></svg>' +
+                '</span></span><span>下载助手</span></button>'
+            );
+            base.mountWithRetry(() => {
+                pageNum = this.detectPage();
+                if (pageNum !== 'home') return false;
+                let anchor = null;
+                let btns = document.querySelectorAll('button.ant-btn');
+                for (let i = 0; i < btns.length; i++) {
+                    if ((btns[i].innerText || '').replace(/\s+/g, '') === '上传') { anchor = btns[i]; break; }
+                }
+                if (!anchor) return false;
+                $(anchor).before($button);
+                // 分类页容器无 gap，补外边距
+                let style = getComputedStyle(anchor.parentElement);
+                let hasGap = style.display === 'flex' && parseFloat(style.gap) > 0;
+                $button.css('margin-right', hasGap ? '0' : '16px');
+                return true;
+            }, () => this.detectPage() === 'home');
+            this.addPageListener();
+        },
+        detectPage() {
+            if (!location.hash) return 'home';
+            if (/^#\/home\/(all|video|img|audio|doc|installer|search|recent)(\/|$)/.test(location.hash)) return 'home';
+            return '';
+        },
+        async initFerryLink() {
+            base.initDefaultConfig();
+            base.addFerryLinkStyle();
+            pageNum = this.detectPage();
+            panInfo = LOCAL_CONFIG.guangya;
+            Object.freeze && Object.freeze(panInfo);
+            this.addButton();
+            base.createTip();
+            base.registerMenuCommand();
+        }
+    };
     let main = {
         init() {
             base.migrate();
@@ -4772,6 +5022,9 @@
             }
             if (/(^|\.)ctfile\.(com|net|cn)$|(^|\.)545c\.com$/.test(location.host)) {
                 ctfile.initFerryLink();
+            }
+            if (/^www\.guangyapan\.com$/.test(location.host)) {
+                guangya.initFerryLink();
             }
         }
     };
