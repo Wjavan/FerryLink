@@ -4815,11 +4815,9 @@
             return selectedFiles.length > 0 && selectedFiles.every(f => f.resType === 2);
         },
         _headers(token) {
-            // 拼接令牌方案名，避免字面量被工具改写
-            let scheme = 'Bea' + 'rer';
             return {
                 'Content-Type': 'application/json',
-                'Authorization': scheme + ' ' + token,
+                'Authorization': 'Bearer ' + token,
             };
         },
         // 改名失败返回 false，不抛错
@@ -4827,7 +4825,7 @@
             try {
                 let res = await base.post(panInfo.pcs['1'], { fileId: fileId, newName: newName }, this._headers(token));
                 if (!res) return false;
-                return res.code === undefined || res.code === 0 || res.msg === 'success';
+                return res.code === 0 || res.msg === 'success';
             } catch (e) {
                 return false;
             }
@@ -4835,12 +4833,11 @@
         // >10MB 走视频接口：临时改 .mp4（该接口只认后缀），取链后改回
         async _bigFileUrl(item, token) {
             let name = item.fileName || '';
-            let isMp4 = /\.mp4$/i.test(name);
             let renamed = false;
             try {
-                if (!isMp4) {
+                if (!/\.mp4$/i.test(name)) {
                     if (!name) return '';
-                    // 先置真：请求可能已到服务端并改名成功，只是回包超时/断连
+                    // 回包可能丢，按已改名处理
                     renamed = true;
                     if (!(await this._renameFile(item.fileId, name + '.mp4', token))) return '';
                 }
@@ -4853,7 +4850,7 @@
             } catch (e) {
                 return '';
             } finally {
-                // 无论成败都改回原名；失败重试一次，仍失败则明确告知用户
+                // 改回原名，失败重试一次
                 if (renamed) {
                     let back = await this._renameFile(item.fileId, name, token);
                     if (!back) back = await this._renameFile(item.fileId, name, token);
@@ -4883,11 +4880,11 @@
             if (this.isOnlyFolder()) {
                 Swal.close(); return message.error('提示：勾选的全是文件夹，请进入文件夹后选择文件！');
             }
-            // 混合勾选时跳过文件夹：只看 resType（2=文件夹），不看文件名有无后缀
+            // 只看 resType，不看后缀
             selectedFiles = selectedFiles.filter(f => !(f && f.resType === 2));
             let token = this._token();
             if (!token) return message.error('提示：登录凭证获取失败，请先登录后刷新页面！');
-            // 大文件必须串行（改名不能并发），小文件仍 15 个一批
+            // 大文件串行防并发改名
             const BATCH = 15, BIG_LIMIT = 10 * 1024 * 1024;
             let smallIdx = [], bigIdx = [];
             selectedFiles.forEach((f, i) => { (+f.fileSize > BIG_LIMIT ? bigIdx : smallIdx).push(i); });
@@ -4960,7 +4957,6 @@
             });
         },
         addButton() {
-            // 图标用官方的 swangpan-icon-download
             let $button = $(
                 '<button type="button" class="ant-btn guangya-button fl-button">' +
                 '<span class="ant-btn-icon"><span role="img" aria-label="download" class="swangpan-icon swangpan-icon-download" style="display:inline-flex;line-height:0">' +
@@ -4970,7 +4966,6 @@
             base.mountWithRetry(() => {
                 pageNum = this.detectPage();
                 if (pageNum !== 'home') return false;
-                // 插到「上传」左边
                 let anchor = null;
                 let btns = document.querySelectorAll('button.ant-btn');
                 for (let i = 0; i < btns.length; i++) {
@@ -4978,7 +4973,7 @@
                 }
                 if (!anchor) return false;
                 $(anchor).before($button);
-                // 分类页父容器是 block 无 gap，需补 margin 对齐 16px
+                // 分类页无 gap，补 margin
                 let pcs = getComputedStyle(anchor.parentElement);
                 let hasGap = pcs.display === 'flex' && parseFloat(pcs.gap) > 0;
                 $button.css('margin-right', hasGap ? '0' : '16px');
@@ -4988,7 +4983,6 @@
         },
         detectPage() {
             if (!location.hash) return 'home';
-            // 最近页的选中项是 collectionId，由 getSelectedList 处理
             if (/^#\/home\/(all|video|img|audio|doc|installer|search|recent)(\/|$)/.test(location.hash)) return 'home';
             return '';
         },
