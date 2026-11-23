@@ -4860,7 +4860,6 @@
         },
         async getFileUrlByOnce(item, index, token) {
             try {
-                // 大文件优先视频通道
                 if (+item.fileSize > 10 * 1024 * 1024) {
                     let big = await this._bigFileUrl(item, token);
                     if (big && /^https?:\/\//.test(big)) return { index, downloadUrl: big };
@@ -4974,8 +4973,8 @@
                 if (!anchor) return false;
                 $(anchor).before($button);
                 // 分类页容器无 gap，补外边距
-                let pcs = getComputedStyle(anchor.parentElement);
-                let hasGap = pcs.display === 'flex' && parseFloat(pcs.gap) > 0;
+                let style = getComputedStyle(anchor.parentElement);
+                let hasGap = style.display === 'flex' && parseFloat(style.gap) > 0;
                 $button.css('margin-right', hasGap ? '0' : '16px');
                 return true;
             }, () => this.detectPage() === 'home');
