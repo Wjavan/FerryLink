@@ -14,8 +14,8 @@
    <img alt="ScriptCat" src="https://img.shields.io/chrome-web-store/v/ndcooeababalnlpkfedmmbbbgkljhpjf?label=ScriptCat&style=flat&logo=data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAACgAAAAoBAMAAAB%2B0KVeAAAAHlBMVEX%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8AAAD%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8AAAAAAABhdFnJAAAACHRSTlOfLk%2F9AATScQNq1IMAAAFkSURBVHjaddLBTpQxEMDx%2F8y3CXtgbRuDHE0g3nCBrGcggQeQN9k3kkfgDSRyJi56NSSwxkQTmRY4EFgoB77FdoXe5pfOTDut7PD%2FUpDg%2F8USPHQgm%2Fg4NWeAIneHLvmppZWRR%2FELK69bFZfWD3eFZql7H39dvUn%2BGnGp%2F5nfoNDAZOxSCC71D2ANlPQHmIydWeofAJ8cnbbt5MeI5rwNpkgzqA4%2FV19nCAq3Ne6DQq4xghZlH9cWKM9PibUSGkDJbq%2FEmxRRkDrXgyKz3T1KlmFpcz6i0nsVS8ynx76DnVXZdxg6e3UYorn3c1Tt3DiOzdL1YvSlXoJCqLMDKMJ2aR%2FwKNluStyzSLMsX7olLr7TrnL7vq75ff%2BleS4cbZ48TbQ5uTr6iOwAzI9b%2FLb5%2BO7iwS57AKyGADkq2czC278DGHy9CGYW23R8FE%2BO7cDb903BDEKOJWYTT7bZD%2FYkvPAZHgCzL3VZiVd1uAAAAABJRU5ErkJggg%3D%3D&labelColor=black&color=1296DB">
    <br/>
    <img alt="Chrome" src="https://img.shields.io/badge/Google%20Chrome-120%2B-FBBC05?style=flat&logo=googlechrome&logoColor=white&labelColor=black">
-   <img alt="Edge" src="https://img.shields.io/badge/Microsoft%20Edge-79%2B-0078D7?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzcuOCAyIDQuMyA0LjYgMy4xIDguNCA1LjQgNi41IDguMSA1LjUgMTEgNS41YzQuNCAwIDggMi45IDggNyAwIDEuOC0uNyAzLjUtMS45IDQuOCAyLjctMS42IDQuNC00LjUgNC40LTcuOEMyMS41IDUuNyAxNy4zIDIgMTIgMnpNMyAxMi41YzAgNC43IDMuOSA4LjUgOSA4LjUgMi4yIDAgNC4yLS44IDUuOC0yLjEtMS45LjYtMy45LjQtNS42LS42LTIuNi0xLjUtMy45LTQuMi0zLjYtNyAxLjUgMS4yIDIuNSAzIDIuNSA1LjEtLjctLjktMS4xLTItMS4xLTMuMnYtLjd6Ii8%2BPC9zdmc%2B&labelColor=black">
-   <img alt="Firefox" src="https://img.shields.io/badge/Mozilla%20Firefox-78%2B-FF7139?style=flat&logo=firefox&logoColor=white&labelColor=black">
+   <img alt="Edge" src="https://img.shields.io/badge/Microsoft%20Edge-120%2B-0078D7?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzcuOCAyIDQuMyA0LjYgMy4xIDguNCA1LjQgNi41IDguMSA1LjUgMTEgNS41YzQuNCAwIDggMi45IDggNyAwIDEuOC0uNyAzLjUtMS45IDQuOCAyLjctMS42IDQuNC00LjUgNC40LTcuOEMyMS41IDUuNyAxNy4zIDIgMTIgMnpNMyAxMi41YzAgNC43IDMuOSA4LjUgOSA4LjUgMi4yIDAgNC4yLS44IDUuOC0yLjEtMS45LjYtMy45LjQtNS42LS42LTIuNi0xLjUtMy45LTQuMi0zLjYtNyAxLjUgMS4yIDIuNSAzIDIuNSA1LjEtLjctLjktMS4xLTItMS4xLTMuMnYtLjd6Ii8%2BPC9zdmc%2B&labelColor=black">
+   <img alt="Firefox" src="https://img.shields.io/badge/Mozilla%20Firefox-154%2B-FF7139?style=flat&logo=firefox&logoColor=white&labelColor=black">
    <br/>
    <img alt="支持平台" src="https://img.shields.io/badge/%E6%94%AF%E6%8C%81%E5%B9%B3%E5%8F%B0-Windows_%7C_Mac_%7C_Linux-blueviolet?style=flat&logo=linux&logoColor=white&labelColor=black">
    <img alt="许可证" src="https://img.shields.io/github/license/Wjavan/FerryLink?label=%E8%AE%B8%E5%8F%AF%E8%AF%81&style=flat&labelColor=black&color=grey&logo=gnu&logoColor=white">
@@ -38,7 +38,7 @@
 | 🎯 **多网盘支持** | 百度网盘、阿里云盘、天翼云盘、迅雷云盘、夸克网盘、移动云盘、城通网盘、光鸭云盘 |
 | 🧩 **统一下载面板** | 先选下载器、再选协议，任意组合；文件再多也不会把弹窗挤爆 |
 | ⚡ **推送型协议** | IDM 本地 HTTP API、Aria2 / Motrix JSON-RPC、BitComet 远程下载 |
-| 🔗 **多链下载** | 开 4 路并发分段取回再合并，单连接被限速时能叠加带宽 |
+| 🔗 **多链下载** | 多路并发分段取回再合并，单连接被限速时能叠加带宽 |
 | 🔀 **转码链路** | 迅雷云盘可用：视频文件另有一条服务器链路，与原始直链并存，需要时可换用 |
 | 🧾 **复制型协议** | cURL、aria2c 命令、BC |
 | 📦 **批量获取** | 一次勾选多个文件，集中取链、批量推送 |
@@ -71,7 +71,7 @@
 | 迅雷云盘 | `pan.xunlei.com` |
 | 夸克网盘 | `pan.quark.cn` |
 | 移动云盘 | `yun.139.com` / `caiyun.139.com` |
-| 城通网盘 | `ctfile.com` / `ctfile.net` / `ctfile.cn` / `545c.com` |
+| 城通网盘 | `ctfile.com` / `ctfile.net` / `ctfile.cn` |
 | 光鸭云盘 | `guangyapan.com` |
 
 ---
@@ -164,7 +164,6 @@
 
 - ⏰ 各网盘下载直链均**有时效性**，过期后请重新获取
 - 🐢 部分网盘对直链下载**有限速**，属官方限制，脚本无法突破
-- ☁️ 百度网盘**超过 50MB 的文件**用浏览器直接下载会失败（CDN 拒绝浏览器 UA），改用 IDM / Aria2 / cURL / BitComet 都可以
 - 📄 百度分享页一次最多取 20 个文件；体积过大的文件百度不下发直链，会提示先保存到网盘
 - 🔀 迅雷的**转码**是服务器另给的一条视频链路，直链不可用或过慢时可换这条
 - 🔒 脚本只在你本机取链和推送，**不存储、不上传任何用户数据**
