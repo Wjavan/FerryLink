@@ -198,7 +198,7 @@
 
 ## 📄 许可
 
-本脚本基于 **GPL-3.0** 许可发布，详见 [LICENSE](LICENSE)。
+本脚本基于 **GPL-3.0-or-later** 许可发布，详见 [LICENSE](LICENSE)。
 
 ---
 
