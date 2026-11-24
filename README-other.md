@@ -83,6 +83,7 @@
 | [GitHub 仓库](https://github.com/Wjavan/FerryLink) | 主仓库 |
 | [GreasyFork](https://greasyfork.org/zh-CN/scripts/595544) | GreasyFork 安装 |
 | [ScriptCat](https://scriptcat.org/zh-CN/script-show-page/8398) | ScriptCat 安装 |
+| [OpenUserJS](https://openuserjs.org/scripts/Wjavan/FerryLink) | OpenUserJS 安装 |
 
 ---
 
@@ -94,4 +95,4 @@
 
 ## 📜 许可
 
-基于 [油小猴](https://www.youxiaohou.com/)「网盘直链下载助手」二次修改，遵循 **GPL-3.0** 开源协议。
+基于 [油小猴](https://www.youxiaohou.com/)「网盘直链下载助手」二次修改，遵循 **GPL-3.0-or-later** 开源协议。
