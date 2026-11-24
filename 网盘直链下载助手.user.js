@@ -5,7 +5,7 @@
 // @author            Wjavan
 // @description       支持百度/阿里/天翼/迅雷/夸克/移动/城通/光鸭网盘直链下载。支持 HTTP/JSON-RPC/cURL，推送至 IDM/XDown/Aria2/BitComet/Motrix/终端。基于油小猴(youxiaohou.com)的网盘直链下载助手修改。
 // @copyright         2026, Wjavan (https://github.com/Wjavan)
-// @license           GPL-3.0
+// @license           GPL-3.0-or-later
 // @compatible        Chrome
 // @compatible        Edge
 // @compatible        Firefox
