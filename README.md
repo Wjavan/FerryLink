@@ -9,6 +9,7 @@
 <p align="center">
    <a href="https://greasyfork.org/zh-CN/scripts/595544"><img alt="GreasyFork 安装量" src="https://img.shields.io/greasyfork/dt/595544?label=GreasyFork%20%E5%AE%89%E8%A3%85%E9%87%8F&style=flat&labelColor=black&color=670000&logo=greasyfork&logoColor=white"></a>
    <a href="https://scriptcat.org/script-show-page/8398"><img alt="ScriptCat 安装量" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fscriptcat.org%2Fapi%2Fv2%2Fscripts%2F8398&label=ScriptCat%20%E5%AE%89%E8%A3%85%E9%87%8F&query=%24.data.total_install&style=flat&labelColor=black&color=1296DB&logo=data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAACgAAAAoBAMAAAB%2B0KVeAAAAHlBMVEX%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8AAAD%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8AAAAAAABhdFnJAAAACHRSTlOfLk%2F9AATScQNq1IMAAAFkSURBVHjaddLBTpQxEMDx%2F8y3CXtgbRuDHE0g3nCBrGcggQeQN9k3kkfgDSRyJi56NSSwxkQTmRY4EFgoB77FdoXe5pfOTDut7PD%2FUpDg%2F8USPHQgm%2Fg4NWeAIneHLvmppZWRR%2FELK69bFZfWD3eFZql7H39dvUn%2BGnGp%2F5nfoNDAZOxSCC71D2ANlPQHmIydWeofAJ8cnbbt5MeI5rwNpkgzqA4%2FV19nCAq3Ne6DQq4xghZlH9cWKM9PibUSGkDJbq%2FEmxRRkDrXgyKz3T1KlmFpcz6i0nsVS8ynx76DnVXZdxg6e3UYorn3c1Tt3DiOzdL1YvSlXoJCqLMDKMJ2aR%2FwKNluStyzSLMsX7olLr7TrnL7vq75ff%2BleS4cbZ48TbQ5uTr6iOwAzI9b%2FLb5%2BO7iwS57AKyGADkq2czC278DGHy9CGYW23R8FE%2BO7cDb903BDEKOJWYTT7bZD%2FYkvPAZHgCzL3VZiVd1uAAAAABJRU5ErkJggg%3D%3D"></a>
+   <a href="https://openuserjs.org/scripts/Wjavan/FerryLink"><img alt="OpenUserJS 安装量" src="https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fopenuserjs.org%2Fscripts%2FWjavan%2FFerryLink&search=Installs%3A%3C%2Fb%3E%20%28%5B0-9%5D%2B%29&replace=$1&label=OpenUserJS%20%E5%AE%89%E8%A3%85%E9%87%8F&style=flat&labelColor=black&color=2c3e50&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iNy41IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPg%3D%3D"></a>
    <br/>
    <a href="https://www.tampermonkey.net/"><img alt="Tampermonkey" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fmicrosoftedge.microsoft.com%2Faddons%2Fgetproductdetailsbycrxid%2Fiikmkjmpaadaobahmlepeloendndfphd&label=Tampermonkey&query=%24.version&style=flat&labelColor=black&color=00485B&logo=tampermonkey&logoColor=white&prefix=v"></a>
    <a href="https://docs.scriptcat.org/"><img alt="ScriptCat" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fmicrosoftedge.microsoft.com%2Faddons%2Fgetproductdetailsbycrxid%2Fliilgpjgabokdklappibcjfablkpcekh&label=ScriptCat&query=%24.version&style=flat&labelColor=black&color=1296DB&logo=data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAACgAAAAoBAMAAAB%2B0KVeAAAAHlBMVEX%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8AAAD%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8AAAAAAABhdFnJAAAACHRSTlOfLk%2F9AATScQNq1IMAAAFkSURBVHjaddLBTpQxEMDx%2F8y3CXtgbRuDHE0g3nCBrGcggQeQN9k3kkfgDSRyJi56NSSwxkQTmRY4EFgoB77FdoXe5pfOTDut7PD%2FUpDg%2F8USPHQgm%2Fg4NWeAIneHLvmppZWRR%2FELK69bFZfWD3eFZql7H39dvUn%2BGnGp%2F5nfoNDAZOxSCC71D2ANlPQHmIydWeofAJ8cnbbt5MeI5rwNpkgzqA4%2FV19nCAq3Ne6DQq4xghZlH9cWKM9PibUSGkDJbq%2FEmxRRkDrXgyKz3T1KlmFpcz6i0nsVS8ynx76DnVXZdxg6e3UYorn3c1Tt3DiOzdL1YvSlXoJCqLMDKMJ2aR%2FwKNluStyzSLMsX7olLr7TrnL7vq75ff%2BleS4cbZ48TbQ5uTr6iOwAzI9b%2FLb5%2BO7iwS57AKyGADkq2czC278DGHy9CGYW23R8FE%2BO7cDb903BDEKOJWYTT7bZD%2FYkvPAZHgCzL3VZiVd1uAAAAABJRU5ErkJggg%3D%3D&prefix=v"></a>
@@ -103,7 +104,12 @@
 1. 访问 [ScriptCat 页面](https://scriptcat.org/zh-CN/script-show-page/8398)
 2. 点击 **安装**
 
-**方法四：国内镜像安装（GitHub 访问慢时用）**
+**方法四：从 OpenUserJS 安装**
+
+1. 访问 [OpenUserJS 页面](https://openuserjs.org/scripts/Wjavan/FerryLink)
+2. 点击 **Install**
+
+**方法五：国内镜像安装（GitHub 访问慢时用）**
 
 1. 打开 [网盘直链下载助手.user.js（jsDelivr 镜像）](https://cdn.jsdelivr.net/gh/Wjavan/FerryLink@main/%E7%BD%91%E7%9B%98%E7%9B%B4%E9%93%BE%E4%B8%8B%E8%BD%BD%E5%8A%A9%E6%89%8B.user.js)
 2. Tampermonkey 会提示安装，点击 **安装** 即可
@@ -177,6 +183,7 @@
 |------|------|
 | 📦 GreasyFork 安装页 | [greasyfork.org/zh-CN/scripts/595544](https://greasyfork.org/zh-CN/scripts/595544) |
 | 🐱 ScriptCat 安装页 | [scriptcat.org/zh-CN/script-show-page/8398](https://scriptcat.org/zh-CN/script-show-page/8398) |
+| 🔵 OpenUserJS 安装页 | [openuserjs.org/scripts/Wjavan/FerryLink](https://openuserjs.org/scripts/Wjavan/FerryLink) |
 | 🌐 项目主页 | [github.com/Wjavan/FerryLink](https://github.com/Wjavan/FerryLink) |
 | 📜 更新日志 | [github.com/Wjavan/FerryLink/releases](https://github.com/Wjavan/FerryLink/releases) |
 | 💡 提交 Issue | [github.com/Wjavan/FerryLink/issues](https://github.com/Wjavan/FerryLink/issues) |
