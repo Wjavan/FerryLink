@@ -79,13 +79,14 @@
 
 ## 📥 安装方法
 
-### 1. 安装 Tampermonkey（油猴）
+### 1. 安装脚本管理器
 
-| 浏览器 | 安装地址 |
-|--------|----------|
-| Chrome | [Chrome 网上应用店](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) |
-| Edge | [Microsoft Edge 扩展商店](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd) |
-| Firefox | [Firefox 附加组件](https://addons.mozilla.org/firefox/addon/tampermonkey/) |
+| 浏览器 | [篡改猴 Tampermonkey](https://www.tampermonkey.net/) | [脚本猫 ScriptCat](https://docs.scriptcat.org/) |
+| :--- | :--- | :--- |
+| Chrome | [Chrome 应用商店](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) | [Chrome 应用商店](https://chromewebstore.google.com/detail/scriptcat/ndcooeababalnlpkfedmmbbbgkljhpjf) |
+| Edge | [Edge 扩展](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd) | [Edge 扩展](https://microsoftedge.microsoft.com/addons/detail/scriptcat/liilgpjgabokdklappibcjfablkpcekh) |
+| Firefox | [附加组件](https://addons.mozilla.org/firefox/addon/tampermonkey/) | [附加组件](https://addons.mozilla.org/zh-CN/firefox/addon/scriptcat/) |
+
 
 ### 2. 安装脚本
 
